@@ -38,6 +38,7 @@ class Conv(MOF):
         self.connecting = False
         self.connect_time = 0
         self.connect_velocity = 0
+        self.channel_on = {}
 
     def update_time(self, new_time=0, relative=1):
         self.mlog("update_time",
@@ -62,6 +63,16 @@ class Conv(MOF):
         MOF.event_slice(self, slc)
 
     def note_on(self, channel=0, note=0x40, velocity=0x40):
+        c_note_velocity = self.channel_on.get(channel, None)
+        if c_note_velocity is not None and self.conv_prog.addoffs:
+            (off_n, off_v) = c_note_velocity
+            self.mlog("addoff", "Adding off channel=%d note=%d, velocity=%d" % 
+                      (channel, off_n, off_v))
+            self.dlog("addoff-before: rt=%d, at=%d" %
+                      (self.rel_time(), self.abs_time()))
+            MOF.note_off(self, channel, off_n, off_v)
+            self.dlog("addoff-after: rt=%d, at=%d" %
+                      (self.rel_time(), self.abs_time()))
         self.n_notes += 1
         self.mlog("note_on",
                   "note=%d, channel=%d, note=%d (%s), velocity=0x%x" %
@@ -80,6 +91,7 @@ class Conv(MOF):
             self.connect_velocity = max(self.connect_velocity, velocity)
         else:
             MOF.note_on(self, channel, note, xvelocity) # calls event_slice
+        self.channel_on[channel] = (note, velocity)
 
     def note_off(self, channel=0, note=0x40, velocity=0x40):
         self.mlog("note_off", "channel=%d, note=0%d (%s), velocity=0x%x" %
@@ -105,6 +117,7 @@ class Conv(MOF):
             self.dlog("note_off: Connecting ... note=%d" % self.n_notes)
         else:
             MOF.note_off(self, channel, note, xvelocity) # calls event_slice
+        self.channel_on[channel] = None
 
     def aftertouch(self, channel=0, note=0x40, velocity=0x40):
         self.mlog("aftertouch", "channel=%d, note=0x%x, velocity=0x%x" %
@@ -137,6 +150,10 @@ class Conv(MOF):
                   "channel=%d, pressure=%d" % (channel, patch))
         MOF.channel_pressure(self, channel, pressure)
 
+    def device_name(self, *args):
+        self.mlog("device_name", " %s" % str(args)) # never tested
+        MOF.device_name(self)
+        
     def pitch_bend(self, channel, value):
         self.mlog("pitch_bend", "channel=%d, value=%d" % (channel, value))
         MOF.pitch_bend(self, channel, value)
@@ -258,6 +275,10 @@ class Conv(MOF):
                   (len(data), str(data)))
         # MOF.sequencer_specific(self, data)
 
+    def sysex_event(self, data):
+        self.mlog("sysex_event", "Len=%d, data=%s" % (len(data), str(data)))
+        # MOF.sysex_event(self, data)
+
 
     def stats_write(self, f=sys.stdout):
         f.write("nTracks=%d\n" % self.stat_nTracks)
@@ -318,7 +339,8 @@ Usage:
                            # Default: a=1 b=0
     [-note <m> <n>]        # Force the <m>-th note to be <n>
     [-connect <m1> <m2>    # Connect <m1>-th till <m2>-th motes
-    [-mlog <metjods>]      # Comma separated method names or 'all'
+    [-addoffs]             # Add missing Note-Off events
+    [-mlog <methods>]      # Comma separated method names or 'all'
   <in midi> <out midi>
 """ % self.argv[0])
 
@@ -335,6 +357,7 @@ Usage:
         self.K = 0
         self.override = {}
         self.connect = []
+        self.addoffs = False
         while self.ok() and ai < len(argv) and argv[ai][0] == '-':
             opt = argv[ai]
             ai += 1
@@ -361,16 +384,19 @@ Usage:
             elif opt == '-connect':
                 self.connect.append((int(sys.argv[ai]), int(sys.argv[ai + 1])))
                 ai += 2
+            elif opt == '-addoffs':
+                self.addoffs = True
             elif opt == '-mlog':
                 if argv[ai] == 'all':
                     self.log_all = True
                 else:
                     self.log_methods = set(string.split(argv[ai], ','))
-                methods = argv[ai]
+                # methods = argv[ai]
                 ai += 1
             else:
                 sys.stderr.write("Bad option: %s\n" % opt)
         if len(argv) != ai + 2:
+            sys.stderr.write("Missing <midi in> <midi out>: %s")
             self.usage()
             sys.exit(1)
         self.connect.sort()

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import glob
 import os
 import sys
 import time
@@ -20,19 +21,24 @@ def run(cmd):
 class Segment:
     def __init__(self, p, musicfn, comment, tb, te=None, seg=None):
         self.p = p
+        if not os.path.exists(musicfn):
+            fns = glob.glob(musicfn)
+            if len(fns) == 1:
+                musicfn = fns[0]
         self.musicfn = musicfn
         self.comment = comment
         self.tb = tb
         self.te = te
         self.seg = seg
 
-    def play(self, segi, player_params="", period=0, sleep=3):
+    def play(self, segi, period=0, sleep=3):
         vlog(64*'=' + "\n\n")
         vlog("Playing: [%2d] %s" % (segi, self.comment))
         if sleep > 0:
             sys.stderr.write("sleep(%d)\n" % sleep)
             time.sleep(sleep)
         if self.musicfn.endswith(".mp3"):
+            player_params = self.p.live_player_params
             if self.p.av or self.tb.find(':') < 0:
                 if self.te is None:
                     run("aplayseg.py %s %s" % (self.musicfn, self.tb))
@@ -43,8 +49,10 @@ class Segment:
                 run("mplayseg.py %s %s %s %s" % 
                     (self.musicfn, self.tb, self.te, player_params))
         elif self.seg:
-            run("timiseg %s -idt --segment %s %s" % 
-                (player_params, self.seg, self.musicfn))
+            player_params = self.p.midi_player_params
+            pp_pad = " " if player_params == "" else (" %s " % player_params)
+            run("timiseg%s-idt --segment %s %s" % 
+                (pp_pad, self.seg, self.musicfn))
         else:
             run("timiticks %s --ticks %s:%s:%d %s" % 
                 (player_params, self.tb, self.te, period, self.musicfn))
@@ -65,7 +73,9 @@ class PSegs:
 Usage: 
   %s 
     -i <data-filename>
-    [-pp <player_params>]
+    [-pp <player_params>] # any
+    [-lpp <player_params>] # live-audio
+    [-mpp <player_params>] # midi
     [-sleep <seconds>]
     [-period <n>]
     [-av]                  # Use avplay instead of mplayer
@@ -84,6 +94,8 @@ Usage:
         self.musicfn = ""
         self.segs = []
         self.player_params = ""
+        self.live_player_params = ""
+        self.midi_player_params = ""
         self.ticks_period = 0
         self.sleep_seconds = 3
         self.any_midi = False
@@ -97,6 +109,12 @@ Usage:
             elif opt == "-pp":
                 ai += 1
                 self.player_params = sys.argv[ai]
+            elif opt == "-lpp":
+                ai += 1
+                self.live_player_params = sys.argv[ai]
+            elif opt == "-mpp":
+                ai += 1
+                self.midi_player_params = sys.argv[ai]
             elif opt == "-period":
                 ai += 1
                 self.ticks_period = int(sys.argv[ai])
@@ -153,6 +171,11 @@ Usage:
 
 
     def run(self):
+        if self.player_params != "":
+            if self.live_player_params == "":
+                self.live_player_params == self.player_params
+            if self.midi_player_params == "":
+                self.midi_player_params == self.player_params
         nums = self.nums
         ab = 0
         ae = 1
@@ -171,7 +194,7 @@ Usage:
 
 
     def play(self, segi, sleep):
-        self.segs[segi].play(segi, self.player_params, self.ticks_period, sleep)
+        self.segs[segi].play(segi, self.ticks_period, sleep)
 
 
 
