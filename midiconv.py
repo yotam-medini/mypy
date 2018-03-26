@@ -257,7 +257,7 @@ class Conv(MOF):
 
     def smtp_offset(self, hour, minute, second, frame, framePart):
         self.mlog("smtp_offset",
-                  "hour=%d, minute=%d, second=%d, frame=%d, framePart=%d,"
+                  "hour=%d, minute=%d, second=%d, frame=%d, framePart=%d," %
                   (hour, minute, second, frame, framePart))
         MOF.smtp_offset(self, hour, minute, second, frame, framePart)
         
