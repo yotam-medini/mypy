@@ -105,7 +105,7 @@ class GPlot:
             a.plot(x, y)
 
         for (x, y, r) in self.circles:
-            circle = Circle((x, y), r)
+            circle = Circle((x, y), r, fill=False)
             a.add_patch(circle)
 
         sw = Gtk.ScrolledWindow()
