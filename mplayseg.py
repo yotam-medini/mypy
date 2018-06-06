@@ -64,7 +64,12 @@ if len(sys.argv) > 4:
 start = "" if bt == "0:00" else ("--start %s" % bt)
 end = "" if et == "99:55" else ("--end %s" % et)
 # cmd = "mpv %s --vid=no --start %s -end %s %s" % (e_params, bt, et, fn)
-cmd = "mpv %s --vid=no %s %s %s" % (e_params, start, end, fn)
+if e_params != ' ':
+    if not e_params.startswith(' '):
+        e_params = ' ' + e_params
+    if not e_params.endswith(' '):
+        e_params += ' '
+cmd = "mpv%s--vid=no %s %s %s" % (e_params, start, end, fn)
 sys.stderr.write("%s\n" % cmd)
 rc = os.system(cmd)
 sys.exit(rc)
