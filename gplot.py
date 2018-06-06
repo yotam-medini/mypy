@@ -86,6 +86,26 @@ class GPlot:
             else:
                 self.fatal('Unsupported option: %s' % opt)        
 
+    def set_bbox(self, xs, ys):
+        # vlog('xs=%s' % str(xs))
+        xmin = min(xs) - 1 if len(xs) > 0 else 0
+        xmax = max(xs) + 1 if len(xs) > 0 else 1
+        ymin = min(ys) - 1 if len(ys) > 0 else 0
+        ymax = max(ys) + 1 if len(ys) > 0 else 1
+        vlog('X: min=%g, max=%g, %s' % (xmin, xmax, str(xs)))
+        vlog('Y: min=%g, max=%g, %s' % (ymin, ymax, str(ys)))
+        dx = xmax - xmin
+        dy = ymax - ymin
+        extra = abs(dy - dx)/2.
+        if dx < dy:
+            xmin -= extra
+            xmax += extra
+        else:
+            ymin -= extra
+            ymax += extra
+        self.bbox = [xmin, xmax, ymin, ymax]
+        vlog('bbox: %s' % str(self.bbox))
+
     def run(self):
         win = Gtk.Window()
         win.connect("delete-event", Gtk.main_quit)
@@ -95,18 +115,28 @@ class GPlot:
         f = Figure(figsize=(6, 6), dpi=100)
         # f.add_axes([-1, -1, 2, 2])
         a = f.add_subplot(111)
-        if self.bbox:
-            a.set_xlim(self.bbox[0: 2])
-            a.set_ylim(self.bbox[2: 4])
 
+        xs = []
+        ys = []
         for line in self.lines:
             x = list(map(lambda i: line[i], range(0, len(line), 2)))
             y = list(map(lambda i: line[i], range(1, len(line), 2)))
+            xs.extend(x)
+            ys.extend(y)
             a.plot(x, y)
 
         for (x, y, r) in self.circles:
             circle = Circle((x, y), r, fill=False)
+            xs.append(x - r)
+            xs.append(x + r)
+            ys.append(y - r)
+            ys.append(y + r)
             a.add_patch(circle)
+
+        if self.bbox is None:
+            self.set_bbox(xs, ys)
+        a.set_xlim(self.bbox[0: 2])
+        a.set_ylim(self.bbox[2: 4])
 
         sw = Gtk.ScrolledWindow()
         win.add(sw)
