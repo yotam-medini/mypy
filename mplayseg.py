@@ -69,7 +69,9 @@ if e_params != ' ':
         e_params = ' ' + e_params
     if not e_params.endswith(' '):
         e_params += ' '
-cmd = "mpv%s--vid=no %s %s %s" % (e_params, start, end, fn)
+# cmd = "mpv%s--vid=no %s %s %s" % (e_params, start, end, fn)
+os.unsetenv('DISPLAY')
+cmd = "mpv%s %s %s %s" % (e_params, start, end, fn)
 sys.stderr.write("%s\n" % cmd)
 rc = os.system(cmd)
 sys.exit(rc)
