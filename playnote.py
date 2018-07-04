@@ -33,6 +33,7 @@ amult['ef'] = amult['ds']
 amult['gf'] = amult['fs']
 
 t = 0.2
+gap = 0
 note = 'a'
 afreq = 440
 
@@ -45,14 +46,24 @@ while ai < len(sys.argv) and sys.argv[ai][0] == '-':
     elif opt == '-A':
         ai += 1
         afreq = int(sys.argv[ai])
+    elif opt == '-s':
+        ai += 1
+        gap = float(sys.argv[ai])
     ai += 1
 if ai == len(sys.argv):
     tune = [note]
 else:
     tune = sys.argv[ai:]
 
+nap = 0
 for note in tune:
-    f = afreq * amult[note]
+    time.sleep(nap); nap = gap
+    oct_mult = 1
+    digit = note[-1]
+    if digit in '0123456789':
+        oct_mult = 2 ** (int(digit) - 4)
+        note = note[:-1]
+    f = oct_mult * afreq * amult[note]
     cmd = 'play -n synth %g sin %g 2>/dev/null' % (t, f)
     vlog(cmd)
     os.system(cmd)
