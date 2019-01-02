@@ -157,8 +157,9 @@ Usage:
                 comment = line[:colon]
                 ss = line[colon + 1:].split()
                 if len(ss) == 2:
+                    dash = ss[1].find("-")
                     comma = ss[1].find(",")
-                    if comma >= 0:
+                    if dash >= 0 or comma >= 0:
                         seg = Segment(self, ss[0], comment, None, None, ss[1])
                     else:
                         # seg = Segment(self, musicfn, comment, ss[0], ss[1])

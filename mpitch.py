@@ -52,7 +52,8 @@ if __name__ == '__main__':
             os.unlink(fn)
         except Exception as e:
             vlog(str(e))
-    syscmd('avconv -i %s %s' % (fnin, scrwav0))
+    # syscmd('avconv -i %s %s' % (fnin, scrwav0))
+    syscmd('ffmpeg -i %s %s' % (fnin, scrwav0))
     syscmd('sox %s %s pitch %g' % (scrwav0, scrwav1, sox_change))
     syscmd('lame %s %s' % (scrwav1, fnout))
     sys.exit(0)
