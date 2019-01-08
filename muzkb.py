@@ -14,6 +14,88 @@ import cairo
 def elog(msg):
     sys.stderr.write('%s\n' % msg)
 
+class Segment:
+    def __init__(self, xb, xe):
+        self.xb = xb
+        self.xe = xe
+    def __str__(self):
+        return '[%d,%e)' % (self.xb, self.xe)
+
+class Locator:
+
+    KEY_NONE = -1
+    KEY_UNDEFINED = -2
+
+    class Key:
+        def __init__(self, note, inner_segment, outer_segment):
+            self.note = note
+            self.inner_segment = inner_segment
+            self.outer_segment = outer_segment
+        def __str__(self):
+            return '{Key(%d, inner=%s, outer=%s}' % (self.note, self.inner, self.outer)
+
+    def __init__(self, w, h, note_low, note_high):
+        self.w = w
+        self.h = h
+        self.note_low = note_low
+        self.note_high = note_high
+        self.allocate()
+
+    def black_height(self):
+        return 2*h//3
+
+    def __str__(self):
+        return '%s(wh=%dx%d, [%d,%d])' % (self.__class__.__name__, self.w, self.h, self.note_low, self.note_high)
+
+    def note_is_white(self, note):
+        return (note % 12) in [0, 2, 4, 5, 7, 9, 11]
+
+    def note_is_black(self, note):
+        return not self.note_is_white(note)
+
+    def allocate(self):
+        self.allocate_white()
+        self.allocate_black()
+
+    def allocate_white(self):
+        self.white_keys = []
+        self.low_white = self.note_low
+        self.high_white = self.note_low
+        if self.note_is_black(self.low_white):
+            self.low_white += 1
+        if self.note_is_black(self.high_white):
+            self.high_white += -1
+        n_whites = self.high_white = self.low_white + 1
+        self.white_outer_width = outer_width = self.w // n_whites
+        space = max(outer_width // 32, 1)
+        # inner_width = outer_width - 2*space
+        wi = 0
+        for note in (self.low_white, self.high_white + 1):
+            if self.note_is_white(note):
+                xl = (wi*self.w + n_whites//2) // n_whites
+                xr = xl + outer_width
+                self.white_keys.append(Locator.Key(note, Segment(xl, xr), Segment(xl + space, xr - space)))
+    
+    def allocate_black(self):
+        self.black_keys = []
+        outer_width = self.w // (self.note_high - self.note_low + 1)
+        space = max(outer_width // 32, 1)
+        if self.note_is_black(self.note_low):
+            # self.black_keys.append(Key(self.note_low), )
+            pass
+
+    def pick(self, x):
+        return -1
+
+
+def locator_test(argv):
+    nums = list(map(int, argv))
+    locator = Locator(nums[0], nums[1], nums[2], nums[3])
+    elog('locator= %s' % locator)
+    for n in nums[4:]:
+        elog('pick(%d) = %d' % (n, locator.pick(n)))
+    return 0
+
 
 class MusicKeyboard:
 
@@ -162,44 +244,14 @@ class MusicKeyboard:
         Gtk.main_quit()
         
 if __name__ == '__main__':
+    rc = 0
     elog('Hello')
+    a1 = sys.argv[1] if len(sys.argv) > 1 else None
+    if a1 == 'locator':
+        rc = locator_test(sys.argv[2:])
+        sys.exit(rc)
     p = MusicKeyboard()
     p.run()
     rc = p.rc
     elog('Bye')
     sys.exit(rc)
-
-
-    
-if __name__ == 'x__main__':
-
-    def draw(da, cr):
-        elog('draw(da=%s, cr=%s)' % (da, cr))
-        w = da.get_allocated_width()
-        h = da.get_allocated_height()
-        size = min(w,h)
-
-        cr.set_source_rgb(0.0,0.2,0.0)
-        cr.paint()
-
-        cr.set_source_rgb(1.0,0.0,0.0)
-
-        cr.arc(0.5*w,0.5*h,0.5*size,0.0,6.3)
-        cr.fill()
-
-    def exercise():
-        win = Gtk.Window(title="Music Keyboard")
-        win.connect("destroy", Gtk.main_quit)
-        vbox = Gtk.VBox()
-
-        drawingarea = Gtk.DrawingArea()
-        vbox.add(drawingarea)
-        drawingarea.connect('draw', draw)
-        win.add(vbox)
-        win.show_all()
-        Gtk.main()
-
-    elog('Hello')
-    exercise()
-    elog('Bye')
-    sys.exit(0)
