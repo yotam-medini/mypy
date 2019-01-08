@@ -54,6 +54,17 @@ class Locator:
         return not self.note_is_white(note)
 
     def allocate(self):
+        # Consider width white-key = 1
+        # b = black key width
+        # w1 = white-back-width C,D,E
+        # w2 = white-back-width F,G,A,B
+        #   3w1 + 2b = 3
+        #   4w2 + 3b = 4
+        # ==>
+        #   w1 = -2b/3 + 1
+        #   w2 = -3b/4 + 1
+        #   w1 - b = -5b/3 + 1
+        #   w2 - b = -7b/4 + 1
         self.allocate_white()
         self.allocate_black()
 
