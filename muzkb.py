@@ -68,12 +68,13 @@ class Locator:
         #   -5b/3 + 1 = 7b/4 - 1   ==>  (7/4 + 5/3)b = 2   ==>  b = 24/41
 
         self.low_white = self.note_low
-        self.high_white = self.note_low
+        self.high_white = self.note_high
         if self.note_is_black(self.low_white):
             self.low_white += 1
         if self.note_is_black(self.high_white):
-            self.high_white += -1
-        n_whites = self.high_white = self.low_white + 1
+            self.high_white -= 1
+        n_whites = self.n_whites_in(self.low_white, self.high_white)
+        elog('n_whites=%d' % n_whites)
         self.white_outer_width = self.w // n_whites
         self.black_outer_width = (24*self.white_outer_width + 20) // 41
         white_space = max(self.white_outer_width // 32, 1)
@@ -113,11 +114,29 @@ class Locator:
                 self.black_keys.append(key)
             self.keys.append(key)
 
+    def n_whites_in(self, low_white, high_white):
+        n = high_white - low_white
+        octaves = n // 12
+        inoct_low = low_white % 12
+        inoct_high = high_white % 12
+        swap = inoct_high < inoct_low
+        if swap:
+            t = inoct_low; inoct_low = inoct_high; inoct_high = t;
+        n_inoct = (inoct_high - inoct_low)//2 + 1
+        if (inoct_low <=4) and (inoct_high >= 5):
+            n_inoct += 1
+        if swap:
+            n_inoct = 9 - n_inoct
+        n_whites = 7*octaves + n_inoct
+        return n_whites
+        
     def pick(self, x):
         return -1
 
     def print(self, f=sys.stdout):
-        f.write('{ #(White)=%d, #(Black)=%d\n' % (len(self.white_keys), len(self.black_keys)))
+        f.write('{ w=%d, {outer_widths: W=%d, B=%d}, #(White)=%d, #(Black)=%d\n' % 
+            (self.w, self.white_outer_width, self.black_outer_width,
+            len(self.white_keys), len(self.black_keys)))
         for key in self.keys:
             note = key.note
             f.write('%s%s\n' % (('' if self.note_is_white(note) else '    '), key))
