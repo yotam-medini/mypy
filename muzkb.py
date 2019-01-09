@@ -7,6 +7,7 @@ import sys
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
+from gi.repository import Gdk
 import cairo
 
 
@@ -226,6 +227,13 @@ class MusicKeyboard:
     def build_keyboard(self):
         da = Gtk.DrawingArea()
         da.connect('draw', self.draw_keyboard, 17)
+        elog('da.connect button event')
+        da.set_events(da.get_events()
+              | Gdk.EventMask.BUTTON_PRESS_MASK   
+              | Gdk.EventMask.BUTTON_RELEASE_MASK 
+              | Gdk.EventMask.POINTER_MOTION_MASK)
+        # da.connect('button_press_event', self.keyboard_press)
+        da.connect('button_release_event', self.keyboard_press, 13)
         return da
 
     def draw_keyboard(self, da, cr, data):
@@ -262,6 +270,10 @@ class MusicKeyboard:
     def cr_set_rgb(self, cr, rgb):
         cr.set_source_rgb(rgb[0], rgb[1], rgb[2])
 
+    def keyboard_press(self, widget, event, *args):
+        elog('keyboard_press: x=%d, y=%d, args=%s' %
+            (event.x, event.y, str(args)))
+        
     def quit(self, *args):
         elog('quit args=%s' % str(quit))
         Gtk.main_quit()
