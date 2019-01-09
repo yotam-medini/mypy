@@ -7,7 +7,6 @@ import sys
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
-# from gi.repository import Gdk
 import cairo
 
 
@@ -42,7 +41,8 @@ class Locator:
         def outer_width(self):
             return self.outer.size()
         def __str__(self):
-            return '{Key(%d, inner=%s, outer=%s}' % (self.note, self.inner, self.outer)
+            return '{Key(%d, inner=%s, outer=%s}' % (
+                self.note, self.inner, self.outer)
 
     def __init__(self, w, h, note_low, note_high):
         self.w = w
@@ -96,12 +96,16 @@ class Locator:
                 wi = len(self.white_keys)
                 xl = (wi * self.w + n_whites//2) // n_whites
                 xr = xl + self.white_outer_width
-                key = Locator.Key(note, Segment(xl + white_space, xr - white_space), Segment(xl, xr))
+                key = Locator.Key(
+                    note,
+                    Segment(xl + white_space, xr - white_space),
+                    Segment(xl, xr))
                 self.white_keys.append(key)
             else:
                 if note == self.note_low:
                     xr = self.black_outer_width // 2
-                    key = Locator.Key(note, Segment(0, xr - black_space), Segment(0, xr))
+                    key = Locator.Key(
+                        note, Segment(0, xr - black_space), Segment(0, xr))
                 else:
                     penta = note % 12
                     pre_white = self.white_keys[-1].outer.xe
@@ -112,13 +116,15 @@ class Locator:
                         8: (1, 2), # G#=Ab
                         10: (1, 4)  # A#=Bb
                     }[penta]
-                    xl = pre_white - (q[0] * self.black_outer_width + (q[1]//2)) // q[1]
+                    xl = pre_white - (
+                        q[0] * self.black_outer_width + (q[1]//2)) // q[1]
                     xl_inner = xl + black_space
                     xr = xl + self.black_outer_width
                     xr_inner = xr - black_space
                     if xr >= self.w:
                         xr = xr_inner = self.w
-                    key = Locator.Key(note, Segment(xl_inner, xr_inner), Segment(xl, xr))
+                    key = Locator.Key(note,
+                        Segment(xl_inner, xr_inner), Segment(xl, xr))
                 self.black_keys.append(key)
             self.keys.append(key)
 
@@ -142,12 +148,15 @@ class Locator:
         return -1
 
     def print(self, f=sys.stdout):
-        f.write('{ w=%d, {outer_widths: W=%d, B=%d}, #(White)=%d, #(Black)=%d\n' % 
+        f.write(
+            '{ w=%d, {outer_widths: W=%d, B=%d},'
+            ' #(White)=%d, #(Black)=%d\n' %
             (self.w, self.white_outer_width, self.black_outer_width,
             len(self.white_keys), len(self.black_keys)))
         for key in self.keys:
             note = key.note
-            f.write('%s%s\n' % (('' if self.note_is_white(note) else '    '), key))
+            f.write('%s%s\n' %
+                (('' if self.note_is_white(note) else '    '), key))
         f.write('}\n')
 
 
@@ -211,7 +220,7 @@ class MusicKeyboard:
         help_mi = Gtk.MenuItem('Help')
         help_mi.set_submenu(help_menu)
         mb.append(help_mi)
-        
+
         return mb
 
     def build_keyboard(self):
@@ -229,7 +238,7 @@ class MusicKeyboard:
         cr.paint()
         self.draw_white_keys(cr, w, h)
         self.draw_black_keys(cr, w, h)
-    
+
     def draw_white_keys(self, cr, w, h):
         self.cr_set_rgb(cr, type(self).color_white)
         for key in self.locator.white_keys:
@@ -243,20 +252,20 @@ class MusicKeyboard:
             outer = key.outer
             cr.rectangle(outer.xb, 0, outer.size(), hb)
             cr.fill()
-        hb -= 1 
+        hb -= 1
         self.cr_set_rgb(cr, type(self).color_black)
         for key in self.locator.black_keys:
             inner = key.inner
             cr.rectangle(inner.xb, 0, inner.size(), hb)
             cr.fill()
-        
+
     def cr_set_rgb(self, cr, rgb):
         cr.set_source_rgb(rgb[0], rgb[1], rgb[2])
 
     def quit(self, *args):
         elog('quit args=%s' % str(quit))
         Gtk.main_quit()
-        
+
 if __name__ == '__main__':
     rc = 0
     elog('Hello')
