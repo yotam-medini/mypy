@@ -22,6 +22,8 @@ class Segment:
     def __init__(self, xb, xe):
         self.xb = xb
         self.xe = xe
+    def size(self):
+        return self.xe - self.xb
     def __str__(self):
         return '[%d, %d)' % (self.xb, self.xe)
 
@@ -35,6 +37,10 @@ class Locator:
             self.note = note
             self.inner = inner
             self.outer = outer
+        def inner_width(self):
+            return self.inner.size()
+        def outer_width(self):
+            return self.outer.size()
         def __str__(self):
             return '{Key(%d, inner=%s, outer=%s}' % (self.note, self.inner, self.outer)
 
@@ -46,10 +52,11 @@ class Locator:
         self.allocate()
 
     def black_height(self):
-        return 2*h//3
+        return 2*self.h//3
 
     def __str__(self):
-        return '%s(wh=%dx%d, [%d,%d])' % (self.__class__.__name__, self.w, self.h, self.note_low, self.note_high)
+        return '%s(wh=%dx%d, [%d,%d])' % (self.__class__.__name__,
+            self.w, self.h, self.note_low, self.note_high)
 
     def note_is_white(self, note):
         return (note % 12) in [0, 2, 4, 5, 7, 9, 11]
@@ -64,7 +71,8 @@ class Locator:
         # w2 = white-back-width F,G,A,B
         #   3w1 + 2b = 3  ==>   w1 = -2b/3 + 1
         #   4w2 + 3b = 4  ==>   w2 = -3b/4 + 1
-        #   Assuming b > 0, since 3/4 > 2/3, so w1 > w2. So we will requre  (w1 - b) = (b - w2)
+        #   Assuming b > 0, since 3/4 > 2/3, so w1 > w2.
+        #   So we will requre  (w1 - b) = (b - w2)
         #   -5b/3 + 1 = 7b/4 - 1   ==>  (7/4 + 5/3)b = 2   ==>  b = 24/41
 
         self.low_white = self.note_low
@@ -215,82 +223,32 @@ class MusicKeyboard:
         elog('da=%s, cr=%s, data=%s' % (da, cr, data))
         w = da.get_allocated_width()
         h = da.get_allocated_height()
+        self.locator = Locator(w, h, self.note_low, self.note_high)
         elog('w=%d, h=%d' % (w, h))
         cr.set_source_rgb(0.0, 0.0, 0.0)
         cr.paint()
-
         self.draw_white_keys(cr, w, h)
         self.draw_black_keys(cr, w, h)
-        # cr.set_source_rgb(0.93, 0.93, 0.66)
-        # cr.rectangle(w/10, h/6, 2*w/19, h)
-        # cr.fill()
     
     def draw_white_keys(self, cr, w, h):
-        n = self.note_high - self.note_low + 1
-        elog('draw_white_keys: n=%d' % n)
-        key_width_portion = w//n
-        low_white = self.note_low
-        lskip = 0
-        if not self.note_is_white(low_white):
-            lskip = key_width_portion // 2
-            w -= lskip
-            low_white += 1
-        high_white = self.note_high
-        if not self.note_is_white(high_white):
-            w -= lskip
-            high_white -= 1
-        n_whites = self.n_whites_in(low_white, high_white)
-        key_width_outer = w // n_whites
-        space = max(key_width_outer // 32, 1)
-        key_width_inner = key_width_outer - 2*space
-        elog('space=%d, lskip=%d' % (space, lskip))
-        elog('w=%d, key_width_outer=%d, key_width_inner=%d' %
-             (w, key_width_outer, key_width_inner))
         self.cr_set_rgb(cr, type(self).color_white)
-        for k in range(n_whites):
-            xl = ((k*w + n_whites//2) // n_whites) + space + lskip
-            xr = xl + key_width_inner
-            elog('k=%d, xl=%d, xr=%d' % (k, xl, xr))
-            cr.rectangle(xl, 0, key_width_inner, h)
+        for key in self.locator.white_keys:
+            inner = key.inner
+            cr.rectangle(inner.xb, 0, inner.size(), h)
             cr.fill()
-
     def draw_black_keys(self, cr, w, h):
-        n = self.note_high - self.note_low + 1
-        elog('draw_black_keys: n=%d' % n)
-        key_width_portion = w//n
-        elog('draw_black_keys: key_width_portion=%d' % key_width_portion)
-        space = max(key_width_portion // 16, 1)
-        key_width_inner = key_width_portion - 2*space
+        cr.set_source_rgb(0.0, 0.0, 0.0)
+        hb = self.locator.black_height()
+        for key in self.locator.black_keys:
+            outer = key.outer
+            cr.rectangle(outer.xb, 0, outer.size(), hb)
+            cr.fill()
+        hb -= 1 
         self.cr_set_rgb(cr, type(self).color_black)
-        for note in range(self.note_low, self.note_high + 1):
-            if self.note_is_black(note):
-                k = note - self.note_low
-                xl = ((k*w + n//2) // n) + space
-                elog('draw_black_keys: xl=%d' % xl)
-                cr.rectangle(xl, 0, key_width_inner, 2*h//3)
-                cr.fill()
-        
-    def note_is_white(self, note):
-        return (note % 12) in [0, 2, 4, 5, 7, 9, 11]
-
-    def note_is_black(self, note):
-        return not self.note_is_white(note)
-
-    def n_whites_in(self, low_white, high_white):
-        n = high_white - low_white
-        octaves = n // 12
-        inoct_low = low_white % 12
-        inoct_high = high_white % 12
-        swap = inoct_high < inoct_low
-        if swap:
-            t = inoct_low; inoct_low = inoct_high; inoct_high = t;
-        n_inoct = (inoct_high - inoct_low)//2 + 1
-        if (inoct_low <=4) and (inoct_high >= 5):
-            n_inoct += 1
-        if swap:
-            n_inoct = 9 - n_inoct
-        n_whites = 7*octaves + n_inoct
-        return n_whites
+        for key in self.locator.black_keys:
+            inner = key.inner
+            cr.rectangle(inner.xb, 0, inner.size(), hb)
+            cr.fill()
         
     def cr_set_rgb(self, cr, rgb):
         cr.set_source_rgb(rgb[0], rgb[1], rgb[2])
