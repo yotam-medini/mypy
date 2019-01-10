@@ -41,6 +41,8 @@ class Locator:
             return self.inner.size()
         def outer_width(self):
             return self.outer.size()
+        def x_inside(self, x):
+            return self.inner.xb <= x < self.inner.xe
         def __str__(self):
             return '{Key(%d, inner=%s, outer=%s}' % (
                 self.note, self.inner, self.outer)
@@ -145,8 +147,29 @@ class Locator:
         n_whites = 7*octaves + n_inoct
         return n_whites
         
-    def pick(self, x):
-        return -1
+    def pick(self, x, y):
+        bnote = -1
+        wnote = self.pick_from(self.white_keys, x)
+        if y < self.black_height():
+            bnote = self.pick_from(self.black_keys, x)
+        ret = bnote if bnote > 0 else wnote
+        return ret
+
+    def pick_from(self, keys, x):
+        note = -1
+        li = 0
+        hi = len(keys) - 1
+        elog('li=%d, hi=%d' % (li, hi))
+        while (note == -1) and (li <= hi):
+            mid = (li + hi) // 2
+            key = keys[mid]
+            if key.x_inside(x):
+                note = key.note
+            elif x < key.inner.xb:
+                hi = mid - 1
+            else:
+                li = mid + 1
+        return note
 
     def print(self, f=sys.stdout):
         f.write(
@@ -166,14 +189,17 @@ def locator_test(argv):
     locator = Locator(nums[0], nums[1], nums[2], nums[3])
     elog('locator= %s' % locator)
     locator.print()
-    for n in nums[4:]:
-        elog('pick(%d) = %d' % (n, locator.pick(n)))
+    tail = nums[4:]
+    xys = list(zip(tail[0::2], tail[1::2]))
+    for (x, y) in xys:
+        elog('pick(%d, %d) = %d' % (x, y, locator.pick(x, y)))
     return 0
 
 
 class MusicKeyboard:
 
-    defult_note_low = 60 - 2*12
+    # defult_note_low = 60 - 2*12
+    defult_note_low = 60
     # defult_note_high = 60 + 2*12
     defult_note_high = defult_note_low + 11
     color_white = (0.93, 0.93, 0.66)
@@ -241,6 +267,7 @@ class MusicKeyboard:
         w = da.get_allocated_width()
         h = da.get_allocated_height()
         self.locator = Locator(w, h, self.note_low, self.note_high)
+        elog('locator=%s' % self.locator)
         elog('w=%d, h=%d' % (w, h))
         cr.set_source_rgb(0.0, 0.0, 0.0)
         cr.paint()
@@ -273,6 +300,8 @@ class MusicKeyboard:
     def keyboard_press(self, widget, event, *args):
         elog('keyboard_press: x=%d, y=%d, args=%s' %
             (event.x, event.y, str(args)))
+        note = self.locator.pick(event.x, event.y)
+        elog('note=%d' % note)
         
     def quit(self, *args):
         elog('quit args=%s' % str(quit))
