@@ -2,7 +2,9 @@
 #
 
 import os
+import pprint
 import sys
+import textwrap
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -17,6 +19,13 @@ def elog(msg):
 def fatal(msg):
     elog('Fatal %s' % msg)
     sys.exit(1)
+
+def safe_int(s, defval=None):
+    try:
+        ret = int(s)
+    except:
+        ret = defval
+    return ret
 
 class Segment:
     def __init__(self, xb, xe):
@@ -196,31 +205,87 @@ def locator_test(argv):
     return 0
 
 
+note_name = []
+name_note = {}
+def _fill_notes_names():
+    snames = ['c', 'cs', 'd', 'ds', 'e', 'f', 'fs', 'g', 'gs', 'a', 'as', 'b']
+    fnames = ['c', 'db', 'd', 'ef', 'e', 'f', 'gf', 'g', 'af', 'a', 'bf', 'b']
+    for note in range(2*12, 8*12 + 2):
+        n = note % 12
+        octave = note // 12 - 1
+        sname = '%s%d' % (snames[n], octave)
+        fname = '%s%d' % (fnames[n], octave)
+        note_name.append(sname)
+        name_note[sname] = note
+        name_note[fname] = note
+_fill_notes_names()
+# elog('note_name=%s' % pprint.pformat(note_name))
+# elog('name_note=%s' % pprint.pformat(name_note))
+
+def name_of_note(s):
+    if type(s) is int:
+        s = note_name[s]
+    return s
+
+def number_of_note(ns):
+    n = safe_int(ns)
+    if n is None:
+        n = name_note[ns]
+    return n
+
+class Defaults:
+    window_size = (1200, 400)
+    # note_low = 60 - 2*12
+    note_low = 60
+    # note_high = 60 + 2*12
+    note_high = note_low + 11
+    volume = 0.2
+    duration = 0.2
+    pitch_note = 'a'
+    pitch_frequency = 440
+    tuning_base = 'd'
+
 class MusicKeyboard:
 
-    # defult_note_low = 60 - 2*12
-    defult_note_low = 60
-    # defult_note_high = 60 + 2*12
-    defult_note_high = defult_note_low + 11
     color_white = (0.93, 0.93, 0.66)
-    color_black = (0.13, 0.13, 0.07)
+    color_black = (0.3, 0.2, 0.2)
+    [TUNING_WELL, TUNING_PYTHAGOREAN, TUNING_JUST] = range(3)
 
-    def __init__(self, note_low = None, note_high=None):
+    def __init__(
+            self,
+            window_size=Defaults.window_size,
+            note_low=Defaults.note_low,
+            note_high=Defaults.note_high,
+            volume=Defaults.volume,
+            duration=Defaults.duration,
+            pitch_note=Defaults.pitch_note,
+            pitch_frequency=Defaults.pitch_frequency,
+            tuning=None,
+            tuning_base=Defaults.tuning_base
+    ):
+        elog('MusicKeyboard.__init__')
         self.rc = 0
-        self.note_low = (type(self).defult_note_low if note_low is None
-            else note_low)
-        self.note_high = (type(self).defult_note_high if note_high is None
-            else note_high)
-        self.build_ui()
+        self.note_low = number_of_note(note_low)
+        self.note_high = number_of_note(note_high)
+        elog('notes: low=%d, high=%d' % (self.note_low, self.note_high))
+        self.volume = volume
+        self.duration = duration
+        self.pitch_note = pitch_note
+        self.pitch_frequency = pitch_frequency
+        self.tuning = tuning
+        self.tuning_base = tuning_base
+        if tuning is None:
+            tuning = MusicKeyboard.TUNING_WELL
+        self.build_ui(window_size)
 
     def run(self):
         elog('run')
         Gtk.main()
         elog('run end')
 
-    def build_ui(self):
+    def build_ui(self, window_size):
         win = Gtk.Window(title="Music Keyboard")
-        win.set_default_size(1200, 400)
+        win.set_default_size(window_size[0], window_size[1])
         vbox = Gtk.VBox()
         menubar = self.build_menubar()
         vbox.pack_start(menubar, False, True, 0)
@@ -302,11 +367,116 @@ class MusicKeyboard:
             (event.x, event.y, str(args)))
         note = self.locator.pick(event.x, event.y)
         elog('note=%d' % note)
+        if note > 0:
+            self.play_note(note)
         
+    def play_note(self, note):
+        elog('play_note: note=%d' % note)
+        t = 0.2
+        afreq = 440
+        vol = 0.1
+        note_mult = 2. ** ((note - (60 + 10)) / 12.)
+        f = note_mult * afreq
+        cmd = 'play -q -n synth %g sin %g vol %g 2>/dev/null' % (t, f, vol)
+        self.syscmd(cmd)
+
+    def syscmd(self, cmd):
+        elog(cmd)
+        rc = os.system(cmd)
+        if rc != 0:
+            elog('os.system: rc=%d' % rc)
     def quit(self, *args):
         elog('quit args=%s' % str(quit))
         Gtk.main_quit()
 
+class App:
+
+    def usage(self, p0):
+        MK = MusicKeyboard
+        sys.stderr.write(textwrap.dedent(
+        """
+        Usage:
+          %s                                      # [Defaults]
+            -h | --help                           # This message
+            -geo <widthxheight>                   # [%dx%d]
+            -range <low-high>                     # [%s-%s]
+            -pitch <note=frequency>               # [a=440]    
+            -tuning <well|pyth|just>[,<basenote>] # [well]
+            -vol <volume>                         # [%g] 0.0 <= volume <= 1.0
+            -t <duration seconds>                 # [%g] 0.0 <= seconds <= 1.0
+
+        Note can be:
+           [cdefgab] with possible alteration [sf] and octave number
+           or midi number [0-85]  (60 = middle-C [Do]))
+        """ % (
+            p0,
+            Defaults.window_size[0], Defaults.window_size[1],
+            name_of_note(Defaults.note_low), name_of_note(Defaults.note_high),
+            Defaults.volume,
+            Defaults.duration
+            )))
+        self.helped = True
+        
+    def __init__(self, argv):
+        elog('App.__init__')
+        self.rc = 0
+        self.helped = False
+        self.window_size = Defaults.window_size
+        self.note_low  = Defaults.note_low
+        self.note_high  = Defaults.note_high
+        self.volume  = Defaults.volume
+        self.duration  = Defaults.duration
+        self.pitch_note = Defaults.pitch_note
+        self.pitch_frequency = Defaults.pitch_frequency
+        self.tuning = MusicKeyboard.TUNING_WELL
+        self.tuning_base = 'd'
+        ai = 1
+        while self.may_run() and ai < len(argv):
+            opt = argv[ai]
+            ai += 1
+            elog('ai=%d, opt=%s' % (ai, opt))
+            if opt in ('-h', '-help', '--help'):
+                self.usage(argv[0])
+            elif opt == '-geo':
+                self.window_size = (int(argv[ai]), int(argv[ai + 1]));
+                ai += 2
+            elif opt == '-range':
+                [self.note_low, self.note_high] = list(argv[ai].split('-'))
+                ai += 1
+            elif opt == '-pitch':
+                self.pitch_note = argv[ai]
+                ai ++ 1
+            elif opt == '-tuning':
+                ss = list(argv[ai],split(','))
+                if ss.startswith('pyth'):
+                    self.tuning = MusicKeyboard.TUNING_PYTHAGOREAN
+                elif ss.startswith('just'):
+                    self.tuning = MusicKeyboard.TUNING_JUST
+                if len(ss) > 1:
+                    self.tuning_base = ss[1]
+            else:
+                self.usage(argv[0])
+                fatal('Bad option: %s' % opt)
+
+    def run(self):
+        elog('App.run')
+        mk = MusicKeyboard(
+            window_size=self.window_size,
+            note_low=self.note_low,
+            note_high=self.note_high,
+            volume=self.volume,
+            duration=self.duration,
+            tuning=self.tuning,
+            tuning_base=self.tuning_base
+        )
+        mk.run()
+        self.rc = mk.rc
+
+    def may_run(self):
+        return self.rc == 0 and not self.helped
+                                         
+                                        
+        
 if __name__ == '__main__':
     rc = 0
     elog('Hello')
@@ -314,8 +484,9 @@ if __name__ == '__main__':
     if a1 == 'locator':
         rc = locator_test(sys.argv[2:])
         sys.exit(rc)
-    p = MusicKeyboard()
-    p.run()
+    p = App(sys.argv)
+    if p.may_run():
+        p.run()
     rc = p.rc
     elog('Bye')
     sys.exit(rc)
