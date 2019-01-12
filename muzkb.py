@@ -210,7 +210,7 @@ name_note = {}
 def _fill_notes_names():
     snames = ['c', 'cs', 'd', 'ds', 'e', 'f', 'fs', 'g', 'gs', 'a', 'as', 'b']
     fnames = ['c', 'db', 'd', 'ef', 'e', 'f', 'gf', 'g', 'af', 'a', 'bf', 'b']
-    for note in range(2*12, 8*12 + 2):
+    for note in range(0*12, 8*12 + 1):
         n = note % 12
         octave = note // 12 - 1
         sname = '%s%d' % (snames[n], octave)
@@ -235,16 +235,53 @@ def number_of_note(ns):
 
 class Defaults:
     window_size = (1200, 400)
-    # note_low = 60 - 2*12
-    note_low = 60
-    # note_high = 60 + 2*12
-    note_high = note_low + 11
+    note_low = 'c3'
+    note_high = 'c5'
     volume = 0.2
     duration = 0.2
     pitch_note = 'a'
     pitch_frequency = 440
     tuning_base = 'd'
 
+
+class Tuning:
+
+    def __init__(self, note_ref, frequeny_ref):
+        self.note_ref = note_ref
+        self.frequeny_ref = frequeny_ref
+
+    def note_frequency(self, note):
+        f = self.middle_note_frequency(note % 12)
+        octave = note // 12 - 5
+        f *= (2. ** octave)
+        return f
+
+    def middle_note_frequency(self, note):
+        return None
+
+class WellTempered(Tuning):
+
+    def __init__(self, note_ref, frequeny_ref):
+        super().__init__(note_ref % 12, frequeny_ref)
+
+    def middle_note_frequency(self, note):
+        a = 2. ** ((note - self.note_ref)/12.)
+        f = a * self.frequeny_ref
+        return f
+
+def tuning_test(argv):
+    system = argv[0]
+    tuning = None
+    notes = []
+    if system == 'well':
+        tuning = WellTempered(int(argv[1]), float(argv[2]))
+        notes = map(int, argv[3:])
+    for note in notes:
+        f = tuning.note_frequency(note)
+        elog('frequeny(%d = %s) = %g' % (note, note_name[note], f))
+    return 0
+
+            
 class MusicKeyboard:
 
     color_white = (0.93, 0.93, 0.66)
@@ -285,12 +322,15 @@ class MusicKeyboard:
 
     def build_ui(self, window_size):
         win = Gtk.Window(title="Music Keyboard")
+        win.connect("destroy", self.quit, "via window destroy")
         win.set_default_size(window_size[0], window_size[1])
         vbox = Gtk.VBox()
         menubar = self.build_menubar()
-        vbox.pack_start(menubar, False, True, 0)
+        vbox.pack_start(menubar, False, True, 6)
+        status_control_frame = self.build_status_control()
+        vbox.pack_start(status_control_frame, False, True, 6)
         keyboard = self.build_keyboard()
-        vbox.pack_start(keyboard, True, True, 2)
+        vbox.pack_start(keyboard, True, True, 6)
         win.add(vbox)
         win.show_all()
 
@@ -299,14 +339,14 @@ class MusicKeyboard:
 
         file_menu = Gtk.Menu();
         mi_quit = Gtk.MenuItem("Quit");
-        mi_quit.connect('activate', self.quit, 17)
+        mi_quit.connect('activate', self.quit, "quit via menu")
         file_menu.append(mi_quit)
         file_mi = Gtk.MenuItem('File')
         file_mi.set_submenu(file_menu)
         mb.append(file_mi)
 
-        help_menu = Gtk.Menu();
-        mi_about = Gtk.MenuItem("About");
+        help_menu = Gtk.Menu()
+        mi_about = Gtk.MenuItem("About")
         # mi_about.connect('activate', self.about, 17)
         help_menu.append(mi_about)
         help_mi = Gtk.MenuItem('Help')
@@ -314,6 +354,46 @@ class MusicKeyboard:
         mb.append(help_mi)
 
         return mb
+
+    def label_frame(self, label):
+        frame = Gtk.Frame()
+        frame.set_label(label)
+        return frame
+
+    def hscale(self, val, vmin, vmax, step_inc, page_inc):
+        HORIZONTAL = Gtk.Orientation.HORIZONTAL
+        adj = Gtk.Adjustment(val, vmin, vmax, step_inc, page_inc, page_inc)
+        scale = Gtk.Scale(orientation=HORIZONTAL, adjustment=adj)
+        scale.set_value_pos(Gtk.PositionType.RIGHT)
+        scale.set_hexpand(True)
+        scale.set_margin_right(6)
+        return scale
+    
+    def framed_hscale(self, name, val, vmin, vmax, step_inc, page_inc):
+        HORIZONTAL = Gtk.Orientation.HORIZONTAL
+        frame = self.label_frame(name)
+        scale = self.hscale(val, vmin, vmax, step_inc, page_inc)
+        frame.add(scale)
+        return frame, scale
+    
+    def frame_tuning(self):
+        self.label_frame('Tuning')
+        hbox = Gtk.HBox()
+        # framed_hscale
+        
+    def build_status_control(self):
+        frame = self.label_frame('Status / Control')
+        hbox = Gtk.HBox()
+        frame_volume, self.volume_scale = self.framed_hscale(
+            'Volume', self.volume, 0., 1., 0.01, 0.05)
+        hbox.pack_start(frame_volume, False, True, 6)
+        frame_duration, self.volume_duration = self.framed_hscale(
+            'Duration', self.duration, 0., 5., 0.1, 0.5)
+        hbox.pack_start(frame_duration, False, True, 6)
+        # hbox.pack_start(self.frame_tuning(), True, False, 6)
+        frame.add(hbox)
+        
+        return frame
 
     def build_keyboard(self):
         da = Gtk.DrawingArea()
@@ -373,10 +453,9 @@ class MusicKeyboard:
     def play_note(self, note):
         elog('play_note: note=%d' % note)
         t = 0.2
-        afreq = 440
         vol = 0.1
         note_mult = 2. ** ((note - (60 + 10)) / 12.)
-        f = note_mult * afreq
+        f = note_mult * self.pitch_frequency
         cmd = 'play -q -n synth %g sin %g vol %g 2>/dev/null' % (t, f, vol)
         self.syscmd(cmd)
 
@@ -386,7 +465,7 @@ class MusicKeyboard:
         if rc != 0:
             elog('os.system: rc=%d' % rc)
     def quit(self, *args):
-        elog('quit args=%s' % str(quit))
+        elog('quit args=%s' % str(args))
         Gtk.main_quit()
 
 class App:
@@ -444,16 +523,19 @@ class App:
                 [self.note_low, self.note_high] = list(argv[ai].split('-'))
                 ai += 1
             elif opt == '-pitch':
-                self.pitch_note = argv[ai]
-                ai ++ 1
+                ss = argv[ai].split('=')
+                self.pitch_note = ss[0]
+                self.pitch_frequency = float(ss[1])
+                ai += 1
             elif opt == '-tuning':
-                ss = list(argv[ai],split(','))
-                if ss.startswith('pyth'):
+                ss = list(argv[ai].split(','))
+                if ss[0].startswith('pyth'):
                     self.tuning = MusicKeyboard.TUNING_PYTHAGOREAN
-                elif ss.startswith('just'):
+                elif ss[0].startswith('just'):
                     self.tuning = MusicKeyboard.TUNING_JUST
                 if len(ss) > 1:
                     self.tuning_base = ss[1]
+                ai += 1
             else:
                 self.usage(argv[0])
                 fatal('Bad option: %s' % opt)
@@ -466,6 +548,8 @@ class App:
             note_high=self.note_high,
             volume=self.volume,
             duration=self.duration,
+            pitch_note=self.pitch_note,
+            pitch_frequency=self.pitch_frequency,
             tuning=self.tuning,
             tuning_base=self.tuning_base
         )
@@ -483,6 +567,9 @@ if __name__ == '__main__':
     a1 = sys.argv[1] if len(sys.argv) > 1 else None
     if a1 == 'locator':
         rc = locator_test(sys.argv[2:])
+        sys.exit(rc)
+    elif a1 == 'tuning':
+        rc = tuning_test(sys.argv[2:])
         sys.exit(rc)
     p = App(sys.argv)
     if p.may_run():
