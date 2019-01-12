@@ -259,7 +259,7 @@ class Tuning:
     def middle_note_frequency(self, note):
         return None
 
-class WellTempered(Tuning):
+class EqualTempered(Tuning):
 
     def __init__(self, note_ref, frequeny_ref):
         super().__init__(note_ref % 12, frequeny_ref)
@@ -273,20 +273,30 @@ def tuning_test(argv):
     system = argv[0]
     tuning = None
     notes = []
-    if system == 'well':
-        tuning = WellTempered(int(argv[1]), float(argv[2]))
+    if system == 'equal':
+        tuning = EqualTempered(int(argv[1]), float(argv[2]))
         notes = map(int, argv[3:])
     for note in notes:
         f = tuning.note_frequency(note)
         elog('frequeny(%d = %s) = %g' % (note, note_name[note], f))
     return 0
 
+
+WHITE_SEMI = [0, 2, 4, 5, 7, 9, 11] # CBDEFGAB
+SEMI_WHITE = dict(map(lambda n: (WHITE_SEMI[n], n), range(len(WHITE_SEMI))))
+
+TUNING_RANGES = []
+for b in WHITE_SEMI: # CBDEFGAB
+    mult = 2. ** ((b - 9)/12.)
+    TUNING_RANGES.append(
+        tuple(map(lambda afreq: round(mult*afreq), [400, 460])))
+    
             
 class MusicKeyboard:
 
     color_white = (0.93, 0.93, 0.66)
     color_black = (0.3, 0.2, 0.2)
-    [TUNING_WELL, TUNING_PYTHAGOREAN, TUNING_JUST] = range(3)
+    [TUNING_EQUAL, TUNING_PYTHAGOREAN, TUNING_JUST] = range(3)
 
     def __init__(
             self,
@@ -307,12 +317,19 @@ class MusicKeyboard:
         elog('notes: low=%d, high=%d' % (self.note_low, self.note_high))
         self.volume = volume
         self.duration = duration
+        elog('pitch_note=%s' % pitch_note)
+        if type(pitch_note) is not int:
+            wi = 'cdefgab'.find(pitch_note.lower())
+            pitch_note = WHITE_SEMI[wi] if wi >= 0 else 9
+        if pitch_note not in WHITE_SEMI:
+            pitch_note = 9 # 'A la"
+        elog('pitch_note=%d' % pitch_note)
         self.pitch_note = pitch_note
         self.pitch_frequency = pitch_frequency
+        if tuning is None:
+            tuning = MusicKeyboard.TUNING_EQUAL
         self.tuning = tuning
         self.tuning_base = tuning_base
-        if tuning is None:
-            tuning = MusicKeyboard.TUNING_WELL
         self.build_ui(window_size)
 
     def run(self):
@@ -379,33 +396,55 @@ class MusicKeyboard:
         frame.add(scale)
         return frame, scale
     
+    def tuning_sensitive_widgets(self, widgets):
+        for widget in widgets:
+            widget.set_sensitive(self.tuning != MusicKeyboard.TUNING_EQUAL)
+
+    def change_tuning(self, combo, widgets):
+        text = combo.get_active_text()
+        elog('change_tuning: text=%s, widgets=%s' % (text, str(widgets)))
+        mk = MusicKeyboard
+        if text.startswith('Equal'):
+            self.tuning = mk.TUNING_EQUAL
+        elif text.startswith('Pyth'):
+            self.tuning = mk.TUNING_PYTHAGOREAN
+        else:
+            self.tuning = mk.TUNING_JUST
+        self.tuning_sensitive_widgets(widgets)
+
     def frame_tuning(self):
         frame = self.label_frame('Tuning')
         hbox = Gtk.HBox()
-        combo = Gtk.ComboBoxText()
+        combo_pitch_note = Gtk.ComboBoxText()
         for i in range(7):
-            combo.append_text('CDEFGAB'[i])
-        combo.set_active(5)
-        hbox.pack_start(combo, False, False, 1)
+            combo_pitch_note.append_text('CDEFGAB'[i])
+            
+        wi = SEMI_WHITE[self.pitch_note]
+        combo_pitch_note.set_active(wi)
+        hbox.pack_start(combo_pitch_note, False, False, 1)
         elog('pitch_frequency=%g' % self.pitch_frequency)
         hbox.pack_start(Gtk.Label('='), False, False, 1)
+        tuning_range = TUNING_RANGES[wi]
         self.frequeny_scale = self.hscale(
-            self.pitch_frequency, 400, 460, 0.5, 1.0)
+            self.pitch_frequency, tuning_range[0], tuning_range[1], 0.5, 1.0)
         hbox.pack_start(self.frequeny_scale, False, True, 4)
-        combo = Gtk.ComboBoxText()
+        combo_tuning = Gtk.ComboBoxText()
         for s in [
                 'Equal Temperament',
                 'Pythagorean 3:2',
                 'Just Intonation :<5']:
-            combo.append_text(s)
-        combo.set_active(0)
-        hbox.pack_start(combo, False, False, 1)
-        at = hbox.pack_start(Gtk.Label('@'), False, False, 1)
-        combo = Gtk.ComboBoxText()
+            combo_tuning.append_text(s)
+        combo_tuning.set_active(self.tuning)
+        hbox.pack_start(combo_tuning, False, False, 1)
+        at = Gtk.Label('@')
+        hbox.pack_start(at, False, False, 1)
+        combo_base = Gtk.ComboBoxText()
         for i in range(7):
-            combo.append_text('CDEFGAB'[i])
-        combo.set_active(1)
-        hbox.pack_start(combo, False, False, 1)
+            combo_base.append_text('CDEFGAB'[i])
+        combo_base.set_active(1)
+        combo_tuning.connect('changed', self.change_tuning, [at, combo_base])
+        hbox.pack_start(combo_base, False, False, 1)
+        self.tuning_sensitive_widgets([at, combo_base])
 
         frame.add(hbox)
         return frame
@@ -413,12 +452,14 @@ class MusicKeyboard:
     def build_status_control(self):
         frame = self.label_frame('Status / Control')
         hbox = Gtk.HBox()
+        hbox_vd = Gtk.HBox()
         frame_volume, self.volume_scale = self.framed_hscale(
             'Volume', self.volume, 0., 1., 0.01, 0.05)
-        hbox.pack_start(frame_volume, False, True, 6)
+        hbox_vd.pack_start(frame_volume, False, True, 6)
         frame_duration, self.volume_duration = self.framed_hscale(
             'Duration', self.duration, 0., 5., 0.1, 0.5)
-        hbox.pack_start(frame_duration, False, True, 6)
+        hbox_vd.pack_start(frame_duration, False, True, 6)
+        hbox.pack_start(hbox_vd, False, True, 6)
         hbox.pack_start(self.frame_tuning(), False, True, 6)
         frame.add(hbox)
         
@@ -431,7 +472,8 @@ class MusicKeyboard:
         da.set_events(da.get_events()
               | Gdk.EventMask.BUTTON_PRESS_MASK   
               | Gdk.EventMask.BUTTON_RELEASE_MASK 
-              | Gdk.EventMask.POINTER_MOTION_MASK)
+              # | Gdk.EventMask.POINTER_MOTION_MASK
+        )
         # da.connect('button_press_event', self.keyboard_press)
         da.connect('button_release_event', self.keyboard_press, 13)
         return da
@@ -483,7 +525,7 @@ class MusicKeyboard:
         elog('play_note: note=%d' % note)
         t = 0.2
         vol = 0.1
-        note_mult = 2. ** ((note - (60 + 10)) / 12.)
+        note_mult = 2. ** ((note - (60 + 9)) / 12.)
         f = note_mult * self.pitch_frequency
         cmd = 'play -q -n synth %g sin %g vol %g 2>/dev/null' % (t, f, vol)
         self.syscmd(cmd)
@@ -504,14 +546,14 @@ class App:
         sys.stderr.write(textwrap.dedent(
         """
         Usage:
-          %s                                      # [Defaults]
-            -h | --help                           # This message
-            -geo <widthxheight>                   # [%dx%d]
-            -range <low-high>                     # [%s-%s]
-            -pitch <note=frequency>               # [a=440]    
-            -tuning <well|pyth|just>[,<basenote>] # [well]
-            -vol <volume>                         # [%g] 0.0 <= volume <= 1.0
-            -t <duration seconds>                 # [%g] 0.0 <= seconds <= 1.0
+          %s                                       # [Defaults]
+            -h | --help                            # This message
+            -geo <widthxheight>                    # [%dx%d]
+            -range <low-high>                      # [%s-%s]
+            -pitch <note=frequency>                # [a=440]    
+            -tuning <equal|pyth|just>[,<basenote>] # [well]
+            -vol <volume>                          # [%g] 0.0 <= volume <= 1.0
+            -t <duration seconds>                  # [%g] 0.0 <= seconds <= 1.0
 
         Note can be:
            [cdefgab] with possible alteration [sf] and octave number
@@ -536,7 +578,7 @@ class App:
         self.duration  = Defaults.duration
         self.pitch_note = Defaults.pitch_note
         self.pitch_frequency = Defaults.pitch_frequency
-        self.tuning = MusicKeyboard.TUNING_WELL
+        self.tuning = MusicKeyboard.TUNING_EQUAL
         self.tuning_base = 'd'
         ai = 1
         while self.may_run() and ai < len(argv):
