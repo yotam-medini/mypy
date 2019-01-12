@@ -364,9 +364,12 @@ class MusicKeyboard:
         HORIZONTAL = Gtk.Orientation.HORIZONTAL
         adj = Gtk.Adjustment(val, vmin, vmax, step_inc, page_inc, page_inc)
         scale = Gtk.Scale(orientation=HORIZONTAL, adjustment=adj)
-        scale.set_value_pos(Gtk.PositionType.RIGHT)
+        scale.set_value_pos(Gtk.PositionType.LEFT)
         scale.set_hexpand(True)
+        scale.set_margin_left(6)
         scale.set_margin_right(6)
+        elog('val=%g' % val)
+        scale.set_value(val)
         return scale
     
     def framed_hscale(self, name, val, vmin, vmax, step_inc, page_inc):
@@ -377,9 +380,35 @@ class MusicKeyboard:
         return frame, scale
     
     def frame_tuning(self):
-        self.label_frame('Tuning')
+        frame = self.label_frame('Tuning')
         hbox = Gtk.HBox()
-        # framed_hscale
+        combo = Gtk.ComboBoxText()
+        for i in range(7):
+            combo.append_text('CDEFGAB'[i])
+        combo.set_active(5)
+        hbox.pack_start(combo, False, False, 1)
+        elog('pitch_frequency=%g' % self.pitch_frequency)
+        hbox.pack_start(Gtk.Label('='), False, False, 1)
+        self.frequeny_scale = self.hscale(
+            self.pitch_frequency, 400, 460, 0.5, 1.0)
+        hbox.pack_start(self.frequeny_scale, False, True, 4)
+        combo = Gtk.ComboBoxText()
+        for s in [
+                'Equal Temperament',
+                'Pythagorean 3:2',
+                'Just Intonation :<5']:
+            combo.append_text(s)
+        combo.set_active(0)
+        hbox.pack_start(combo, False, False, 1)
+        at = hbox.pack_start(Gtk.Label('@'), False, False, 1)
+        combo = Gtk.ComboBoxText()
+        for i in range(7):
+            combo.append_text('CDEFGAB'[i])
+        combo.set_active(1)
+        hbox.pack_start(combo, False, False, 1)
+
+        frame.add(hbox)
+        return frame
         
     def build_status_control(self):
         frame = self.label_frame('Status / Control')
@@ -390,7 +419,7 @@ class MusicKeyboard:
         frame_duration, self.volume_duration = self.framed_hscale(
             'Duration', self.duration, 0., 5., 0.1, 0.5)
         hbox.pack_start(frame_duration, False, True, 6)
-        # hbox.pack_start(self.frame_tuning(), True, False, 6)
+        hbox.pack_start(self.frame_tuning(), False, True, 6)
         frame.add(hbox)
         
         return frame
