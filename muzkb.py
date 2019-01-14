@@ -269,6 +269,36 @@ class EqualTempered(Tuning):
         f = a * self.frequeny_ref
         return f
 
+class JustIntonation(Tuning):
+    def __init__(self, note_ref, frequeny_ref, base_note):
+        super().__init__(note_ref % 12, frequeny_ref)
+    
+class Pythagorean(JustIntonation):
+
+    def __init__(self, note_ref, frequeny_ref, base_note):
+        super().__init__(note_ref % 12, frequeny_ref)
+        self.base_note = base_note
+        q = [1./1, x, 9./8., x, 81./64., 4./3., x, 3./2,
+             x, 27./16., x, 243.,128.]
+
+    def middle_note_frequency(self, note):
+        a = 2. ** ((note - self.note_ref)/12.)
+        f = a * self.frequeny_ref
+        return f
+
+class FiveLimit(JustIntonation):
+
+    def __init__(self, note_ref, frequeny_ref, base_note):
+        super().__init__(note_ref % 12, frequeny_ref)
+        self.base_note = base_note
+        q = [1./1, x, 9./8., x, 5./4., 4./3., x, 3./2,
+             x, 5./3., x, 15./8.]
+
+    def middle_note_frequency(self, note):
+        a = 2. ** ((note - self.note_ref)/12.)
+        f = a * self.frequeny_ref
+        return f
+
 def tuning_test(argv):
     system = argv[0]
     tuning = None
