@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 
+import fractions
 import os
 import pprint
 import sys
@@ -270,42 +271,67 @@ class EqualTempered(Tuning):
         return f
 
 class JustIntonation(Tuning):
-    def __init__(self, note_ref, frequeny_ref, base_note):
+    def F(self, d, n):
+        return fractions.Fraction(d, n)
+    def __init__(self, note_ref, frequeny_ref, note_base):
         super().__init__(note_ref % 12, frequeny_ref)
+        self.note_base = note_base
+        self.factors = 12*[0]
+    def set_factors(self, q):
+        qref  = q[((self.note_ref + 12) - self.note_base) % 12]
+        for i in range(12):
+            fi = (self.note_base + i) % 12
+            self.factors[fi] = q[i] / (qref * (2 if fi < self.note_ref else 1))
+        # elog('factors=%s' % str(self.factors))
+        # elog('factors=%s' % str(list(map(float, self.factors))))
+    def middle_note_frequency(self, note):
+        frequeny = self.factors[note] * self.frequeny_ref
+        return frequeny
     
 class Pythagorean(JustIntonation):
 
-    def __init__(self, note_ref, frequeny_ref, base_note):
-        super().__init__(note_ref % 12, frequeny_ref)
-        self.base_note = base_note
-        q = [1./1, x, 9./8., x, 81./64., 4./3., x, 3./2,
-             x, 27./16., x, 243.,128.]
-
-    def middle_note_frequency(self, note):
-        a = 2. ** ((note - self.note_ref)/12.)
-        f = a * self.frequeny_ref
-        return f
+    def __init__(self, note_ref, frequeny_ref, note_base):
+        super().__init__(note_ref % 12, frequeny_ref, note_base)
+        self.note_base = note_base
+        F = self.F
+        q = [
+            1, F(2**8,3**5), F(3**2,2**3), F(2**5,3**3),
+            F(3**4,2**6), F(2**2,3), F(3**6,2**9), F(3,2),
+            F(2**7,3**4), F(3**3,2**4), F(2**4,3**2), F(3**5,2**7)
+        ]
+        self.set_factors(q)
 
 class FiveLimit(JustIntonation):
 
-    def __init__(self, note_ref, frequeny_ref, base_note):
-        super().__init__(note_ref % 12, frequeny_ref)
-        self.base_note = base_note
-        q = [1./1, x, 9./8., x, 5./4., 4./3., x, 3./2,
-             x, 5./3., x, 15./8.]
-
-    def middle_note_frequency(self, note):
-        a = 2. ** ((note - self.note_ref)/12.)
-        f = a * self.frequeny_ref
-        return f
+    def __init__(self, note_ref, frequeny_ref, note_base):
+        super().__init__(note_ref % 12, frequeny_ref, note_base)
+        self.note_base = note_base
+        F = self.F
+        q = [
+            1, F(2**4,3*5), F(3**2,2**3), F(2*3,5),
+            F(5,2**2), F(2**2,3), F((3**2)*5,2**5), F(3,2),
+            F(2**3,5), F(5,3), F(3**2,5), F(3*5,2**3)
+        ]
+        self.set_factors(q)
 
 def tuning_test(argv):
     system = argv[0]
     tuning = None
     notes = []
-    if system == 'equal':
-        tuning = EqualTempered(int(argv[1]), float(argv[2]))
+    note_ref = int(argv[1])
+    frequeny_ref = float(argv[2])
+    if system.startswith('eq'):
+        tuning = EqualTempered(note_ref, frequeny_ref)
         notes = map(int, argv[3:])
+    else:
+        note_base = int(argv[3])
+        notes = map(int, argv[4:])
+        if system.startswith('pytha'):
+            tuning = Pythagorean(note_ref, frequeny_ref, note_base)
+        elif system.startswith('five'):
+            tuning = FiveLimit(note_ref, frequeny_ref, note_base)
+        else:
+            fatal('Unknown tuning system: %s' % system)
     for note in notes:
         f = tuning.note_frequency(note)
         elog('frequeny(%d = %s) = %g' % (note, note_name[note], f))
@@ -326,7 +352,7 @@ class MusicKeyboard:
 
     color_white = (0.93, 0.93, 0.66)
     color_black = (0.3, 0.2, 0.2)
-    [TUNING_EQUAL, TUNING_PYTHAGOREAN, TUNING_JUST] = range(3)
+    [TUNING_EQUAL, TUNING_PYTHAGOREAN, TUNING_FIVE] = range(3)
 
     def __init__(
             self,
@@ -439,7 +465,7 @@ class MusicKeyboard:
         elif text.startswith('Pyth'):
             self.tuning = mk.TUNING_PYTHAGOREAN
         else:
-            self.tuning = mk.TUNING_JUST
+            self.tuning = mk.TUNING_FIVE
         self.tuning_sensitive_widgets(widgets)
 
     def frame_tuning(self):
@@ -575,13 +601,13 @@ class App:
         MK = MusicKeyboard
         sys.stderr.write(textwrap.dedent(
         """
-        Usage:
-          %s                                       # [Defaults]
+        Usage:                                     # [Defaults]
+          %s
             -h | --help                            # This message
-            -geo <widthxheight>                    # [%dx%d]
+            -geo <width>x<height>                  # [%dx%d]
             -range <low-high>                      # [%s-%s]
             -pitch <note=frequency>                # [a=440]    
-            -tuning <equal|pyth|just>[,<basenote>] # [well]
+            -tuning <equal|pyth|just>[,<basenote>] # [equal]
             -vol <volume>                          # [%g] 0.0 <= volume <= 1.0
             -t <duration seconds>                  # [%g] 0.0 <= seconds <= 1.0
 
@@ -633,7 +659,7 @@ class App:
                 if ss[0].startswith('pyth'):
                     self.tuning = MusicKeyboard.TUNING_PYTHAGOREAN
                 elif ss[0].startswith('just'):
-                    self.tuning = MusicKeyboard.TUNING_JUST
+                    self.tuning = MusicKeyboard.TUNING_FIVE
                 if len(ss) > 1:
                     self.tuning_base = ss[1]
                 ai += 1
