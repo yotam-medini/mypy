@@ -505,15 +505,25 @@ class MusicKeyboard:
         frame.add(hbox)
         return frame
         
+    def volume_change(self, widget):
+        elog('volume_change: value=%g' % widget.get_value())
+        self.volume = widget.get_value()
+
+    def duration_change(self, widget):
+        elog('volume_change: value=%g' % widget.get_value())
+        self.duration = widget.get_value()
+
     def build_status_control(self):
         frame = self.label_frame('Status / Control')
         hbox = Gtk.HBox()
         hbox_vd = Gtk.HBox()
-        frame_volume, self.volume_scale = self.framed_hscale(
+        frame_volume, volume_scale = self.framed_hscale(
             'Volume', self.volume, 0., 1., 0.01, 0.05)
+        volume_scale.connect('value-changed', self.volume_change)
         hbox_vd.pack_start(frame_volume, False, True, 6)
-        frame_duration, self.volume_duration = self.framed_hscale(
+        frame_duration, duration_scale = self.framed_hscale(
             'Duration', self.duration, 0., 5., 0.1, 0.5)
+        duration_scale.connect('value-changed', self.duration_change)
         hbox_vd.pack_start(frame_duration, False, True, 6)
         hbox.pack_start(hbox_vd, False, True, 6)
         hbox.pack_start(self.frame_tuning(), False, True, 6)
@@ -552,6 +562,7 @@ class MusicKeyboard:
             inner = key.inner
             cr.rectangle(inner.xb, 0, inner.size(), h)
             cr.fill()
+
     def draw_black_keys(self, cr, w, h):
         cr.set_source_rgb(0.0, 0.0, 0.0)
         hb = self.locator.black_height()
@@ -579,11 +590,10 @@ class MusicKeyboard:
         
     def play_note(self, note):
         elog('play_note: note=%d' % note)
-        t = 0.2
-        vol = 0.1
         note_mult = 2. ** ((note - (60 + 9)) / 12.)
         f = note_mult * self.pitch_frequency
-        cmd = 'play -q -n synth %g sin %g vol %g 2>/dev/null' % (t, f, vol)
+        cmd = 'play -q -n synth %g sin %g vol %g 2>/dev/null' % (
+            self.duration, f, self.volume)
         self.syscmd(cmd)
 
     def syscmd(self, cmd):
