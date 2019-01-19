@@ -235,7 +235,7 @@ def number_of_note(ns):
     return n
 
 class Defaults:
-    window_size = (1200, 400)
+    window_size = (1200, 600)
     note_low = 'c3'
     note_high = 'c5'
     volume = 0.2
@@ -273,22 +273,22 @@ class EqualTempered(Tuning):
 class JustIntonation(Tuning):
     def F(self, d, n):
         return fractions.Fraction(d, n)
-    def __init__(self, note_ref, frequeny_ref, note_base):
+    def __init__(self, note_ref, frequeny_ref, tuning_base):
         super().__init__(note_ref % 12, frequeny_ref)
-        self.note_base = note_base % 12
+        self.tuning_base = tuning_base % 12
         self.factors = 12*[0]
     def set_factors(self, q):
-        pitch_relbase_index = ((self.note_ref + 12) - self.note_base) % 12
+        pitch_relbase_index = ((self.note_ref + 12) - self.tuning_base) % 12
         qref = q[pitch_relbase_index]
-        elog('JustIntonation: note_ref=%d, note_base=%d, pri=%d, qref=%g' %
-              (self.note_ref, self.note_base, pitch_relbase_index, qref))
+        elog('JustIntonation: note_ref=%d, tuning_base=%d, pri=%d, qref=%g' %
+              (self.note_ref, self.tuning_base, pitch_relbase_index, qref))
         dqref = 1 / qref
         octave_fix = fractions.Fraction(1)
         i = 0
         pi = self.note_ref
         qi = pitch_relbase_index
         while i < 12:
-            elog('pi=%d, qi=%d' % (pi, qi))
+            # elog('pi=%d, qi=%d' % (pi, qi))
             self.factors[pi] = q[qi] * (dqref * octave_fix)
             i += 1
             pi += 1
@@ -312,8 +312,9 @@ class JustIntonation(Tuning):
     
 class Pythagorean(JustIntonation):
 
-    def __init__(self, note_ref, frequeny_ref, note_base):
-        super().__init__(note_ref % 12, frequeny_ref, note_base)
+    def __init__(self, note_ref, frequeny_ref, tuning_base):
+        elog('Pythagorean(%d, %g, %d)' % (note_ref, frequeny_ref, tuning_base))
+        super().__init__(note_ref % 12, frequeny_ref, tuning_base)
         F = self.F
         q = [
             1, F(2**8,3**5), F(3**2,2**3), F(2**5,3**3),
@@ -324,8 +325,8 @@ class Pythagorean(JustIntonation):
 
 class FiveLimit(JustIntonation):
 
-    def __init__(self, note_ref, frequeny_ref, note_base):
-        super().__init__(note_ref % 12, frequeny_ref, note_base)
+    def __init__(self, note_ref, frequeny_ref, tuning_base):
+        super().__init__(note_ref % 12, frequeny_ref, tuning_base)
         F = self.F
         q = [
             1, F(2**4,3*5), F(3**2,2**3), F(2*3,5),
@@ -344,12 +345,12 @@ def tuning_test(argv):
         tuning = EqualTempered(note_ref, frequeny_ref)
         notes = map(int, argv[3:])
     else:
-        note_base = int(argv[3])
+        tuning_base = int(argv[3])
         notes = map(int, argv[4:])
         if system.startswith('pytha'):
-            tuning = Pythagorean(note_ref, frequeny_ref, note_base)
+            tuning = Pythagorean(note_ref, frequeny_ref, tuning_base)
         elif system.startswith('five'):
-            tuning = FiveLimit(note_ref, frequeny_ref, note_base)
+            tuning = FiveLimit(note_ref, frequeny_ref, tuning_base)
         else:
             fatal('Unknown tuning system: %s' % system)
     for note in notes:
@@ -429,6 +430,7 @@ class MusicKeyboard:
             fatal('Bad tuning_system=%s' % self.tuning_system)
         
     def build_ui(self, window_size):
+        self.window_size = window_size
         win = Gtk.Window(title="Music Keyboard")
         win.connect("destroy", self.quit, "via window destroy")
         win.set_default_size(window_size[0], window_size[1])
@@ -439,8 +441,12 @@ class MusicKeyboard:
         vbox.pack_start(status_control_frame, False, True, 6)
         keyboard = self.build_keyboard()
         vbox.pack_start(keyboard, True, True, 6)
+        self.viewlog = self.build_view_log(window_size)
+        vbox.pack_start(self.viewlog, False, True, 6)        
         win.add(vbox)
+        elog('viewlog size=%s' % str(self.viewlog.get_size_request()))
         win.show_all()
+        elog('after show viewlog size=%s' % str(self.viewlog.get_size_request()))
 
     def build_menubar(self):
         mb = Gtk.MenuBar()
@@ -527,9 +533,9 @@ class MusicKeyboard:
 
     def change_tuning_base(self, combo):
         text = combo.get_active_text()
-        self.base_note = 'CxDxEFxGxAxB'.find(text)
-        elog('change_tuning_system: text=%s, base_note=%d' %
-             (text, self.base_note))
+        self.tuning_base = 'CxDxEFxGxAxB'.find(text)
+        elog('change_tuning_system: text=%s, tuning_base=%d' %
+             (text, self.tuning_base))
         self.set_tuning()
         
     def frame_tuning(self):
@@ -658,12 +664,36 @@ class MusicKeyboard:
         elog('note=%d' % note)
         if note > 0:
             self.play_note(note)
+
+    def build_view_log(self, window_size):
+        viewlog = Gtk.TextView()
+        viewlog.set_property('editable', False)
+        viewlog.set_property('cursor-visible', False)
+        viewlog.set_size_request(window_size[0], window_size[1] // 6)
+        return viewlog
+
+    def view_log_add_line(self, line):
+        if not line.endswith('\n'):
+            line += '\n'
+        buffer = self.viewlog.get_buffer()
+        curr = buffer.get_text(buffer.get_start_iter(), buffer.get_end_iter(),
+            True)
+        lines = curr.split('\n')
+        lines = list(filter(lambda s: len(s) > 0, lines))
+        elog('lines[%d]=%s' % (len(lines), str(lines)))
+        if len(lines) < 6:
+            buffer.insert(buffer.get_end_iter(), line)
+        else:
+            lines = lines[1:] + [line]
+            text = '\n'.join(lines)
+            buffer.set_text(text)
         
     def play_note(self, note):
         elog('play_note: note=%d' % note)
         f = self.tuning.note_frequency(note)
-        cmd = 'play -q -n synth %g sin %g vol %g 2>/dev/null' % (
+        cmd = 'play -q -n synth %g sin %g vol %g' % (
             self.duration, f, self.volume)
+        self.view_log_add_line(cmd)
         self.syscmd(cmd)
 
     def syscmd(self, cmd):
@@ -671,6 +701,7 @@ class MusicKeyboard:
         rc = os.system(cmd)
         if rc != 0:
             elog('os.system: rc=%d' % rc)
+
     def quit(self, *args):
         elog('quit args=%s' % str(args))
         Gtk.main_quit()
