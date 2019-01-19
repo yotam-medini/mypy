@@ -278,16 +278,34 @@ class JustIntonation(Tuning):
         self.note_base = note_base % 12
         self.factors = 12*[0]
     def set_factors(self, q):
-        qref = q[((self.note_ref + 12) - self.note_base) % 12]
-        #elog('JustIntonation: note_ref=%d, note_base=%d, qref=%g' %
-        #      (self.note_ref, self.note_base, qref))
-        for i in range(12):
-            fi = (self.note_base + i) % 12
-            self.factors[fi] = q[i] / (qref * (2 if fi < self.note_base else 1))
+        pitch_relbase_index = ((self.note_ref + 12) - self.note_base) % 12
+        qref = q[pitch_relbase_index]
+        elog('JustIntonation: note_ref=%d, note_base=%d, pri=%d, qref=%g' %
+              (self.note_ref, self.note_base, pitch_relbase_index, qref))
+        dqref = 1 / qref
+        octave_fix = fractions.Fraction(1)
+        i = 0
+        pi = self.note_ref
+        qi = pitch_relbase_index
+        while i < 12:
+            elog('pi=%d, qi=%d' % (pi, qi))
+            self.factors[pi] = q[qi] * (dqref * octave_fix)
+            i += 1
+            pi += 1
+            qi += 1
+            if pi == 12:
+                pi = 0
+                octave_fix /= 2
+            if qi == 12:
+                qi = 0
+                octave_fix *= 2
+            
         # elog('q=%s' % list(map(lambda x: '%g' % x, q)))
         # elog('factors=%s' % list(map(lambda x: '%g' % x, self.factors)))
         # elog('factors=%s' % str(self.factors))
         # elog('factors=%s' % str(list(map(float, self.factors))))
+        if self.note_frequency(60) < 200:
+            fatal('Too low c4')
     def middle_note_frequency(self, note):
         frequeny = self.factors[note] * self.frequeny_ref
         return frequeny
@@ -529,7 +547,7 @@ class MusicKeyboard:
         hbox.pack_start(Gtk.Label('='), False, False, 1)
         tuning_range = TUNING_RANGES[wi]
         self.frequeny_scale = self.hscale(
-            self.pitch_frequency, tuning_range[0], tuning_range[1], 0.5, 1.0)
+            self.pitch_frequency, tuning_range[0], tuning_range[1], 0.1, 0.5)
         self.frequeny_scale.connect('value-changed',
             self.change_pitch_frequency)
         hbox.pack_start(self.frequeny_scale, False, True, 4)
