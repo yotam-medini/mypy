@@ -14,7 +14,7 @@ def usage(a0):
        %s <fnin> <fnout> <change>
     Where:
        pitch is frequency factor. Using '/' is an option.
-    """))
+    """ % a0))
 
 def fatal(msg, rc=1):
     vlog(msg)
