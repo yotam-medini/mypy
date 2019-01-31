@@ -691,7 +691,7 @@ class MusicKeyboard:
     def play_note(self, note):
         elog('play_note: note=%d' % note)
         f = self.tuning.note_frequency(note)
-        cmd = 'play -q -n synth %g sin %g vol %g' % (
+        cmd = 'play -qn synth %g pluck %g vol %g' % (
             self.duration, f, self.volume)
         self.view_log_add_line(cmd)
         self.syscmd(cmd)
