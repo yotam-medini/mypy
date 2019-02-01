@@ -595,11 +595,11 @@ class MusicKeyboard:
         hbox = Gtk.HBox()
         hbox_vd = Gtk.HBox()
         frame_volume, volume_scale = self.framed_hscale(
-            'Volume', self.volume, 0., 1., 0.01, 0.05)
+            'Volume', self.volume, 0.1, 1., 0.01, 0.05)
         volume_scale.connect('value-changed', self.volume_change)
         hbox_vd.pack_start(frame_volume, False, True, 6)
         frame_duration, duration_scale = self.framed_hscale(
-            'Duration', self.duration, 0., 5., 0.1, 0.5)
+            'Duration', self.duration, 0.1, 5., 0.1, 0.5)
         duration_scale.connect('value-changed', self.duration_change)
         hbox_vd.pack_start(frame_duration, False, True, 6)
         hbox.pack_start(hbox_vd, False, True, 6)
@@ -719,8 +719,8 @@ class App:
             -range <low-high>                      # [%s-%s]
             -pitch <note=frequency>                # [a=440]    
             -tuning <equal|pyth|just>[,<basenote>] # [equal]
-            -vol <volume>                          # [%g] 0.0 <= volume <= 1.0
-            -t <duration seconds>                  # [%g] 0.0 <= seconds <= 1.0
+            -vol <volume>                          # [%g] 0.1 <= volume <= 1.0
+            -t <duration seconds>                  # [%g] 0.1 <= seconds <= 1.0
 
         Note can be:
            [cdefgab] with possible alteration [sf] and octave number
