@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#
+# Author:  Yotam Medini  yotam.medini@gmail.com -- GPL
 
 import fractions
 import os
@@ -694,7 +694,7 @@ class MusicKeyboard:
         cmd = 'play -qn synth %g pluck %g vol %g' % (
             self.duration, f, self.volume)
         self.view_log_add_line(cmd)
-        self.syscmd(cmd)
+        self.syscmd(cmd + ' &') # background, no wait to end
 
     def syscmd(self, cmd):
         elog(cmd)
