@@ -366,7 +366,7 @@ TUNING_RANGES = []
 for b in WHITE_SEMI: # CBDEFGAB
     mult = 2. ** ((b - 9)/12.)
     TUNING_RANGES.append(
-        tuple(map(lambda afreq: round(mult*afreq), [400, 460])))
+        tuple(map(lambda afreq: round(mult*afreq), [400, 471])))
     
             
 class MusicKeyboard:
