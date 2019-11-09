@@ -152,7 +152,11 @@ class Conv(MOF):
 
     def device_name(self, *args):
         self.mlog("device_name", " %s" % str(args)) # never tested
-        MOF.device_name(self)
+        try:
+            MOF.device_name(self)
+        except Exception as e:
+            self.mlog("device_name", "args: %s, e=%s" % (str(args), str(e)))
+            
         
     def pitch_bend(self, channel, value):
         self.mlog("pitch_bend", "channel=%d, value=%d" % (channel, value))
