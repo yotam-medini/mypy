@@ -1,7 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import sys
 import os
+import subprocess
+import sys
 
 class SpeakEtAl:
 
@@ -11,6 +12,7 @@ class SpeakEtAl:
 Usage:
   %s
   [-h | --help]   # This message
+  [-keep]
   [-silent]
   <url>
 """ % sys.argv[0])
@@ -20,6 +22,7 @@ Usage:
         self.argv = argv
         self.rc = 0
         self.helped = False
+        self.keep = False
         self.silent = False
         ai = 1
         while self.mayrun() and ai < len(argv) and argv[ai][0] == '-':
@@ -29,6 +32,8 @@ Usage:
                 self.usage()
             elif opt == '-silent':
                 self.silent = True
+            elif opt == '-keep':
+                self.keep = True
             else:
                 self.error("Unsupported option: '%s'" % opt)
         if ai != len(argv) - 1:
@@ -55,6 +60,15 @@ Usage:
         rc = os.system(cmd)
         if rc != 0:
             sys,exit(rc)
+
+    def subproc_run(self, cmd_args):
+        self.vlog(' '.join(cmd_args))
+        p = subprocess.run(cmd_args)
+        if p.returncode != 0:
+            if self.keep:
+                self.vlog('Failed: returncode=%d, but keep on' % p.returncode)
+            else:
+                sys.exit(p.returncode)
 
     def unlink(self, fn):
         try:
@@ -106,9 +120,16 @@ Usage:
                 url_add = url_add.replace(" ", "%20") + ".mp3"
                 url = "%s%s" % (self.urlbase(), url_add)
                 fn = "%s-%s-%s.mp3" % (sn, snn, name)
-                self.unlink(fn)
-                cmd = "wget -O %s '%s'" % (fn, url)
-                self.syscmd(cmd)
+                fn = fn.replace("'", '')
+                if self.keep and os.path.exists(fn):
+                    self.vlog('Already exists, so keep: %s' % fn)
+                else:
+                    self.unlink(fn)
+                    # cmd = "wget -O %s '%s'" % (fn, url)
+                    # self.syscmd(cmd)
+                    cmd_args = ('wget -O %s' % fn).split()
+                    cmd_args.append(url)
+                    self.subproc_run(cmd_args)
                 li = len(lines) # exit-loop
             li += 1
 

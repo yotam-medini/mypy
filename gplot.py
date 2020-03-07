@@ -18,6 +18,8 @@ from matplotlib.patches import Circle, Wedge, Polygon
 import matplotlib.lines as mlines
 vlog('MatPlotLib imported')
 import numpy as np
+import random
+
 
 def safe_float(s):
     ret = None
@@ -27,6 +29,9 @@ def safe_float(s):
         ret = None
     return ret
 
+def rand_color():
+    return '#%06x' % random.randint(0, 16**6 - 1)
+    
 class GPlot:
 
     def usage(self):
@@ -35,7 +40,7 @@ class GPlot:
           %s
           [-h | -help | --help]           # This message
           [-bbox <xmin xmax ymin ymax>]   #
-          [-line <x1 y1  x2 y2  ...]      # repeatable
+          [-line <x1 y1  x2 y2  ...>]     # repeatable
           [-circle <x y r>]               # repeatable
         """) % self.argv[0])
         self.helped = True
@@ -55,6 +60,7 @@ class GPlot:
         self.helped = False
         self.bbox = None
         self.lines = []
+        self.polys = []
         self.circles = []
         ai = 1
         while self.mayrun() and ai < len(argv):
@@ -65,7 +71,7 @@ class GPlot:
             elif opt == '-bbox':
                 self.bbox = list(map(float, argv[ai: ai + 4]))
                 ai += 4
-            elif opt == '-line':
+            elif opt in ('-line', '-poly'):
                 line = []
                 floating = True
                 while floating and  ai < len(argv):
@@ -78,7 +84,10 @@ class GPlot:
                 ll = len(line)
                 if ll == 0 or ((ll % 2) != 0):
                     self.fatal('Bad line size: %d' % ll)
-                self.lines.append(line)
+                if opt == '-line':
+                    self.lines.append(line)
+                else:
+                    self.polys.append(line)
             elif opt == '-circle':
                 circle = tuple(map(float, argv[ai: ai + 3]))
                 ai += 3
@@ -124,6 +133,17 @@ class GPlot:
             xs.extend(x)
             ys.extend(y)
             a.plot(x, y)
+
+        for poly in self.polys:
+            x = list(map(lambda i: poly[i], range(0, len(poly), 2)))
+            y = list(map(lambda i: poly[i], range(1, len(poly), 2)))
+            xs.extend(x)
+            ys.extend(y)
+            xy = []
+            for i in range(len(poly) / 2):
+                xy.append((poly[2*i], poly[2*i + 1]))
+            gpoly = Polygon(xy, color=rand_color())
+            a.add_patch(gpoly)
 
         for (x, y, r) in self.circles:
             circle = Circle((x, y), r, fill=False)
