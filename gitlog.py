@@ -7,6 +7,13 @@ import textwrap
 def vlog(msg):
     sys.stderr.write("%s\n" % msg)
 
+def email_to_author(eaddress):
+    author = eaddress.split('@')[0]
+    ss = author.split('.')
+    if len(ss) > 1:
+        author = ss[0] + '.' + ss[1][:1]
+    return author
+
 class GitLog:
 
     defaults = {
@@ -22,6 +29,7 @@ class GitLog:
         self.hashlen = defaults['hashlen']
         self.trim = defaults['trim']
         self.git_log_params = []
+        self.dt = False
         self.parse_args()
 
     def usage(self):
@@ -33,6 +41,7 @@ class GitLog:
           [-n <number>]         # {n} number of commits to show
           [-hashlen <number>    # {hashlen}
           [-trim <number>       # {trim}
+          [-dt]                 # Add Datetime yy-mm-dd:hhmm
           [-- <args>]           # as is parametes to 'git log'
         """.format(pn=sys.argv[0], **defaults)))
 
@@ -49,6 +58,8 @@ class GitLog:
             if opt[1:] in ('n', 'hashlen', 'trim'):
                 setattr(self, opt[1:], int(self.argv[ai]))
                 ai += 1
+            elif opt == '-dt':
+                self.dt = True
             elif opt == '--':
                 self.git_log_params = self.argv[ai:]
                 vlog("git_log_params=%s" % str(self.git_log_params))
@@ -62,8 +73,9 @@ class GitLog:
         sys.exit(1)
 
     def run(self):
-        pretty_fmt = "%H:%ae:%s"
-        cmd = "git --no-pager log -%d --oneline --format=%s" % (
+        # pretty_fmt = "%H:%ae:%ad:%s"
+        pretty_fmt = "%H:%ae:%cd:%s"
+        cmd = "git --no-pager log -%d --oneline --date=format:%%y-%%m-%%d+%%H%%M --format=%s" % (
             self.n, pretty_fmt)
         if len(self.git_log_params) > 0:
             cmd += " " + " ".join(self.git_log_params)
@@ -73,18 +85,25 @@ class GitLog:
             output = output[:-1]
         lines = output.split("\n")
         emails = map(lambda line: line.split(':')[1], lines)
-        emails_pre_at = map(lambda e: e.split('@')[0], emails)
+        # emails_pre_at = map(lambda e: e.split('@')[0], emails)
+        authors = map(email_to_author, emails)
+        # max_email_pfx = max(map(lambda s: len(s), emails_pre_at))
+        max_author = max(map(lambda s: len(s), authors))
         # emails_pre_at = list(emails_pre_at)
         # vlog("emails_pre_at=%s" % str(emails_pre_at))
-        max_email_pfx = max(map(lambda s: len(s), emails_pre_at))
+        # max_email_pfx = max(map(lambda s: len(s), emails_pre_at))
+        max_author = max(map(lambda s: len(s), authors))
         # vlog("max_email_pfx=%d" % max_email_pfx)
         for line in lines:
             ss = line.split(':')
             hashh = ss[0][:self.hashlen]
-            u = ss[1].split('@')[0]
-            u += (max_email_pfx - len(u)) * ' '
-            comment = ':'.join(ss[2:])
-            oline = ("%s %s %s" % (hashh, u, comment))[:self.trim]
+            # u = ss[1].split('@')[0]
+            # u += (max_email_pfx - len(u)) * ' '
+            author = email_to_author(ss[1])
+            author += (max_author - len(author)) * ' '
+            comment = ':'.join(ss[3:])
+            dt = (' ' + ss[2].replace('+', ':')) if self.dt else ''
+            oline = ("%s %s%s %s" % (hashh, author, dt, comment))[:self.trim]
             sys.stdout.write("%s\n" % oline)
         
 
