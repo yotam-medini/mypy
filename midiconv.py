@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-#
 # Convert instruments of midi file  using midi package
+# Author:  Yotam Medini  yotam.medini@gmail.com - GPL
 
 import os
 import sys

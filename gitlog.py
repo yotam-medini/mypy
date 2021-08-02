@@ -88,7 +88,7 @@ class GitLog:
         # emails_pre_at = map(lambda e: e.split('@')[0], emails)
         authors = map(email_to_author, emails)
         # max_email_pfx = max(map(lambda s: len(s), emails_pre_at))
-        max_author = max(map(lambda s: len(s), authors))
+        # max_author = max(map(lambda s: len(s), authors))
         # emails_pre_at = list(emails_pre_at)
         # vlog("emails_pre_at=%s" % str(emails_pre_at))
         # max_email_pfx = max(map(lambda s: len(s), emails_pre_at))
