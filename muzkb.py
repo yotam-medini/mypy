@@ -452,18 +452,18 @@ class MusicKeyboard:
         mb = Gtk.MenuBar()
 
         file_menu = Gtk.Menu();
-        mi_quit = Gtk.MenuItem("Quit");
+        mi_quit = Gtk.MenuItem(label="Quit");
         mi_quit.connect('activate', self.quit, "quit via menu")
         file_menu.append(mi_quit)
-        file_mi = Gtk.MenuItem('File')
+        file_mi = Gtk.MenuItem(label='File')
         file_mi.set_submenu(file_menu)
         mb.append(file_mi)
 
         help_menu = Gtk.Menu()
-        mi_about = Gtk.MenuItem("About")
+        mi_about = Gtk.MenuItem(label="About")
         # mi_about.connect('activate', self.about, 17)
         help_menu.append(mi_about)
-        help_mi = Gtk.MenuItem('Help')
+        help_mi = Gtk.MenuItem(label='Help')
         help_mi.set_submenu(help_menu)
         mb.append(help_mi)
 
@@ -476,12 +476,18 @@ class MusicKeyboard:
 
     def hscale(self, val, vmin, vmax, step_inc, page_inc):
         HORIZONTAL = Gtk.Orientation.HORIZONTAL
-        adj = Gtk.Adjustment(val, vmin, vmax, step_inc, page_inc, page_inc)
+        adj = Gtk.Adjustment(
+            value=val,
+            lower=vmin,
+            upper=vmax,
+            step_increment=step_inc,
+            page_increment=page_inc,
+            page_size=page_inc)
         scale = Gtk.Scale(orientation=HORIZONTAL, adjustment=adj)
         scale.set_value_pos(Gtk.PositionType.LEFT)
         scale.set_hexpand(True)
-        scale.set_margin_left(6)
-        scale.set_margin_right(6)
+        scale.set_margin_start(6)
+        scale.set_margin_end(6)
         elog('val=%g' % val)
         scale.set_value(val)
         return scale
@@ -550,7 +556,7 @@ class MusicKeyboard:
         hbox.pack_start(combo_pitch_note, False, False, 1)
         combo_pitch_note.connect('changed', self.change_pitch_note)
         elog('pitch_frequency=%g' % self.pitch_frequency)
-        hbox.pack_start(Gtk.Label('='), False, False, 1)
+        hbox.pack_start(Gtk.Label(label='='), False, False, 1)
         tuning_range = TUNING_RANGES[wi]
         self.frequeny_scale = self.hscale(
             self.pitch_frequency, tuning_range[0], tuning_range[1], 0.1, 0.5)
@@ -565,7 +571,7 @@ class MusicKeyboard:
             combo_tuning_system.append_text(s)
         combo_tuning_system.set_active(self.tuning_system)
         hbox.pack_start(combo_tuning_system, False, False, 1)
-        at = Gtk.Label('@')
+        at = Gtk.Label(label='@')
         hbox.pack_start(at, False, False, 1)
         combo_base = Gtk.ComboBoxText()
         for i in range(7):
