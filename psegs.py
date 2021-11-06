@@ -46,8 +46,9 @@ class Segment:
                     run("aplayseg.py %s %s %s" %
                         (self.musicfn, self.tb, self.te))
             else:
-                run("mplayseg.py %s %s %s %s" % 
-                    (self.musicfn, self.tb, self.te, player_params))
+                # run("mplayseg.py %s %s %s %s" % 
+                #     (self.musicfn, self.tb, self.te, player_params))
+                run(f'mpv --start={self.tb} --end={self.te} {player_params} {self.musicfn}')
         elif self.seg:
             player_params = self.p.midi_player_params
             pp_pad = " " if player_params == "" else (" %s " % player_params)
@@ -130,7 +131,7 @@ Usage:
 
         if ai >= len(sys.argv):
             self.usage()
-        self.nums = map(int, self.argv[ai:])
+        self.nums = list(map(int, self.argv[ai:]))
 
 
     def data_read(self, fn):

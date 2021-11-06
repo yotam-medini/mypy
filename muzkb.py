@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # Author:  Yotam Medini  yotam.medini@gmail.com -- GPL
 
 import fractions

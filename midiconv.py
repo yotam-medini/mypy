@@ -40,6 +40,9 @@ class Conv(MOF):
         self.connect_velocity = 0
         self.channel_on = {}
 
+    def program_name(self, data):
+        return 'midiconv'
+
     def update_time(self, new_time=0, relative=1):
         self.mlog("update_time",
                   "new_time=%d, relative=%d" % (new_time, relative))
