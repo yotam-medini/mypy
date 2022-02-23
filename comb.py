@@ -134,7 +134,7 @@ class MultiComb:
            return len(self.comb)
 
         def end(self) -> bool:
-            ret = self.comb[0] == self.n() - self.k()
+            ret = (len(self.comb) == 0) or (self.comb[0] == self.n() - self.k())
             return ret
 
         def next(self) -> None:
@@ -162,9 +162,9 @@ class MultiComb:
         self.levels = []
         lut = list(range(self.n))
         for i in range(self.nk()):
-            level = self.__class__.Level(ks[i], lut)
+            level = self.__class__.Level(self.ks[i], lut)
             self.levels.append(level)
-            lut = lut[ks[i]:]
+            lut = lut[self.ks[i]:]
 
     def current(self) -> List[List[int]]:
         ret = None
