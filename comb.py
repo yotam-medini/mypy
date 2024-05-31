@@ -259,7 +259,10 @@ if __name__ == "__main__":
 
     rc = 0
     cmd = sys.argv[1]
-    if cmd == "choose":
+    if cmd == "gcd":
+        [m, n] = map(int, sys.argv[2:4])
+        sys.stdout.write(f"gcd({m}, {n}) = {gcd(m, n)}\n")
+    elif cmd == "choose":
         [n, k] = map(int, sys.argv[2:4])
         sys.stdout.write("choose(%d, %d) = %d\n" % (n, k, choose(n, k)))
     elif cmd == "combinations":

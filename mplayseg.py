@@ -61,8 +61,8 @@ if e_params is None:
 if len(sys.argv) > 4:
     e_params += ' ' + string.join(sys.argv[4:], ' ')
 # cmd = "mplayer %s -ss %s -endpos %s %s" % (e_params, bt, endpos, fn)
-start = "" if bt == "0:00" else ("--start %s" % bt)
-end = "" if et == "99:55" else ("--end %s" % et)
+start = "" if bt == "0:00" else ("--start=%s" % bt)
+end = "" if et == "99:55" else ("--end=%s" % et)
 # cmd = "mpv %s --vid=no --start %s -end %s %s" % (e_params, bt, et, fn)
 if e_params != ' ':
     if not e_params.startswith(' '):
