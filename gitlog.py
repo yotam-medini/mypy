@@ -19,7 +19,7 @@ class GitLog:
     defaults = {
         'n': 8,
         'hashlen': 8,
-        'trim': 80
+        'trim': 120
     }
     def __init__(self, argv):
         defaults = self.__class__.defaults
@@ -75,7 +75,7 @@ class GitLog:
     def run(self):
         # pretty_fmt = "%H:%ae:%ad:%s"
         pretty_fmt = "%H:%ae:%cd:%s"
-        cmd = "git --no-pager log -%d --oneline --date=format:%%y-%%m-%%d+%%H%%M --format=%s" % (
+        cmd = "git --no-pager log -%d --oneline --date=format:%%Y-%%m-%%d+%%H%%M --format=%s" % (
             self.n, pretty_fmt)
         if len(self.git_log_params) > 0:
             cmd += " " + " ".join(self.git_log_params)
