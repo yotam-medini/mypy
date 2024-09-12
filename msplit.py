@@ -180,8 +180,7 @@ Usage:
         pfx = self.allmp3[:-4] + '_'
         n_names = len(names)
         n_skips = len(list(filter(lambda s: s == 'skipmeskipme', names)))
-        if n_skips > 0:
-            self.vlog('n_skips=%d' % n_skips)
+        self.vlog(f"names={names}, n_skips={n_skips}")
         es = os.listdir('.')
         es.sort()
         old_fns = []

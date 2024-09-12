@@ -34,11 +34,13 @@ class Segment:
     def play(self, segi, period=0, sleep=3):
         vlog(64*'=' + "\n\n")
         vlog("Playing: [%2d] %s" % (segi, self.comment))
+        player_params = "??"
         if sleep > 0:
             sys.stderr.write("sleep(%d)\n" % sleep)
             time.sleep(sleep)
-        if self.musicfn.endswith(".mp3"):
-            player_params = self.p.live_player_params
+        if self.musicfn.endswith(".mp3") or self.musicfn.endswith(".mov"):
+            player_params = (self.p.live_player_params
+                if self.musicfn.endswith(".mp3") else self.p.video_player_params)
             if self.p.av or self.tb.find(':') < 0:
                 if self.te is None:
                     run("aplayseg.py %s %s" % (self.musicfn, self.tb))
@@ -96,6 +98,7 @@ Usage:
         self.segs = []
         self.player_params = ""
         self.live_player_params = ""
+        self.video_player_params = ""
         self.midi_player_params = ""
         self.ticks_period = 0
         self.sleep_seconds = 3
@@ -113,6 +116,9 @@ Usage:
             elif opt == "-lpp":
                 ai += 1
                 self.live_player_params = sys.argv[ai]
+            elif opt == "-vpp":
+                ai += 1
+                self.video_player_params = sys.argv[ai]
             elif opt == "-mpp":
                 ai += 1
                 self.midi_player_params = sys.argv[ai]
