@@ -31,6 +31,32 @@ class Segment:
         self.te = te
         self.seg = seg
 
+    def split_seg(self, s):
+        ss_comma = s.split(',')
+        ss_dash = s.split('-')
+        return ss_comma if len(ss_comma) > len(ss_dash) else ss_dash
+        
+    def get_tb(self):
+        return self.split_seg(self.seg)[0] if self.tb is None else self.tb
+
+    def get_te(self):
+        return self.split_seg(self.seg)[1] if self.te is None else self.te
+
+    def set_te(self, te):
+        if self.te is None:
+            ss_comma = self.seg.split(',')
+            ss_dash = self.seg.split('-')
+            if len(ss_comma) > len(ss_dash):
+                self.seg = f"{ss_comma[0]},{te}"
+            else:
+                self.seg = f"{ss_dash[0]}-{te}"
+        else:
+            self.te = te
+            
+    def clone(self):
+        return Segment(self.p, self.musicfn, self.comment, self.tb, self.te,
+                       self.seg)
+
     def play(self, segi, period=0, sleep=3):
         vlog(64*'=' + "\n\n")
         vlog("Playing: [%2d] %s" % (segi, self.comment))
@@ -81,6 +107,7 @@ Usage:
     [-mpp <player_params>] # midi
     [-sleep <seconds>]
     [-period <n>]
+    [-merge <seconds>]     # unite segment if difference < seconds
     [-av]                  # Use avplay instead of mplayer
     [sbegin send] [seg]
 """
@@ -102,6 +129,7 @@ Usage:
         self.midi_player_params = ""
         self.ticks_period = 0
         self.sleep_seconds = 3
+        self.merge_seconds = None
         self.any_midi = False
         self.av = False
         ai = 1
@@ -128,6 +156,10 @@ Usage:
             elif opt == "-sleep":
                 ai += 1
                 self.sleep_seconds = int(sys.argv[ai])
+            elif opt == "-merge":
+                ai += 1
+                self.merge_seconds = float(sys.argv[ai])
+                vlog(f"(parse args) merge_seconds={self.merge_seconds}")
             elif opt == "-av":
                 self.av = True
             else:
@@ -177,6 +209,14 @@ Usage:
         # self.musicfn = musicfn
         self.segs = segs
 
+    def stime_to_sec(self, s) -> float:
+        ret = 0.
+        ss = s.split(':')
+        if len(ss) == 1:
+            ret = float(ss[0])
+        else:
+            ret = 60*float(ss[0]) + float(ss[1])
+        return ret
 
     def run(self):
         if self.player_params != "":
@@ -189,9 +229,26 @@ Usage:
         ae = 1
         sleep = 0
         while ae < len(nums):
-            for si in range(nums[ab], nums[ae]):
-                self.play(si, sleep)
-                sleep = self.sleep_seconds
+            if self.merge_seconds is None:
+                for si in range(nums[ab], nums[ae]):
+                    self.play(si, sleep)
+                    sleep = self.sleep_seconds
+            else:
+                pass
+                si = nums[ab]
+                while si < nums[ae]:
+                    seg = self.segs[si].clone()
+                    segi = si
+                    while ((si + 1 < nums[ae]) and
+                        (self.segs[si + 1].musicfn == seg.musicfn) and
+                        (self.stime_to_sec(seg.get_te()) + self.merge_seconds >=
+                         self.stime_to_sec(self.segs[si + 1].get_tb()))):
+                        seg.set_te(self.segs[si + 1].get_te())
+                        seg.comment += ' ' + self.segs[si + 1].comment
+                        si += 1
+                        seg.play(segi, self.ticks_period, sleep)
+                        sleep = self.sleep_seconds
+                    si += 1
             ab += 2
             ae += 2
 
