@@ -4,53 +4,54 @@
 GtkColorSelection lets the user choose a color. GtkColorSelectionDialog is a
 prebuilt dialog containing a GtkColorSelection."""
 
-import pygtk
-pygtk.require('2.0')
-import gtk
+import sys
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+from gi.repository import Gdk
 
-class ColorSelectorDemo(gtk.Window):
-    color = gtk.gdk.color_parse("blue")
+class ColorSelectorDemo(Gtk.Window):
+    color = Gdk.color_parse("blue")
 
     def __init__(self, parent=None):
         # Create the toplevel window
-        gtk.Window.__init__(self)
+        Gtk.Window.__init__(self)
         try:
             self.set_screen(parent.get_screen())
         except AttributeError:
-            self.connect('destroy', lambda *w: gtk.main_quit())
+            self.connect('destroy', lambda *w: Gtk.main_quit())
 
         self.set_title(self.__class__.__name__)
         self.set_border_width(8)
-        vbox = gtk.VBox()
+        vbox = Gtk.VBox()
         vbox.set_border_width(8)
         self.add(vbox)
 
         # Create the color swatch area
-        frame = gtk.Frame()
-        frame.set_shadow_type(gtk.SHADOW_IN)
+        frame = Gtk.Frame()
+        frame.set_shadow_type(Gtk.ShadowType.IN)
         vbox.pack_start(frame, True, True, 8)
 
-        self.d_area = gtk.DrawingArea()
+        self.d_area = Gtk.DrawingArea()
         self.d_area.set_size_request(200, 200)
-        self.d_area.modify_bg(gtk.STATE_NORMAL, self.color)
+        self.d_area.modify_bg(Gtk.StateType.NORMAL, self.color)
         frame.add(self.d_area)
 
-        alignment = gtk.Alignment(1.0, 0.5, 0.0, 0.0)
+        button = Gtk.Button("_Change the above color")
+        button.set_halign(Gtk.Align.END)
+        button.set_valign(Gtk.Align.CENTER)
 
-        button = gtk.Button("_Change the above color")
-        alignment.add(button)
-
-        vbox.pack_start(alignment, True, True)
+        vbox.pack_start(button, True, True, 8)
 
         button.connect('clicked', self.on_change_color_clicked)
-        button.set_flags(gtk.CAN_DEFAULT)
+        # button.set_flags(Gtk.CAN_DEFAULT)
         button.grab_default()
 
         self.show_all()
 
     def on_change_color_clicked(self, button):
 
-        dialog = gtk.ColorSelectionDialog("Changing color")
+        dialog = Gtk.ColorSelectionDialog("Changing color")
         dialog.set_transient_for(self)
         colorsel = dialog.colorsel
 
@@ -60,16 +61,16 @@ class ColorSelectorDemo(gtk.Window):
 
         response = dialog.run()
 
-        if response == gtk.RESPONSE_OK:
+        if response == Gtk.RESPONSE_OK:
             self.color = colorsel.get_current_color()
-            self.d_area.modify_bg(gtk.STATE_NORMAL, self.color)
+            self.d_area.modify_bg(Gtk.StateType.NORMAL, self.color)
 
         dialog.destroy()
         return True
 
 def main():
     ColorSelectorDemo()
-    gtk.main()
+    Gtk.main()
 
 if __name__ == '__main__':
     main()
