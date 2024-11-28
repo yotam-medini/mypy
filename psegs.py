@@ -10,12 +10,13 @@ import time
 def vlog(msg):
     sys.stderr.write("%s\n" % msg)
 
-def run(cmd):
+def run(cmd, dry=False):
     vlog("%s" % cmd)
-    rc = os.system(cmd)
-    if rc != 0:
-        vlog("Error: rc=0x%x" % rc)
-        sys.exit(rc)
+    if not dry:
+        rc = os.system(cmd)
+        if rc != 0:
+            vlog("Error: rc=0x%x" % rc)
+            sys.exit(rc)
 
 
 class Segment:
@@ -81,7 +82,7 @@ class Segment:
             player_params = self.p.midi_player_params
             pp_pad = " " if player_params == "" else (" %s " % player_params)
             run("timiseg%s-idt --segment %s %s" % 
-                (pp_pad, self.seg, self.musicfn))
+                (pp_pad, self.seg, self.musicfn), dry=self.p.dry)
         else:
             run("timiticks %s --ticks %s:%s:%d %s" % 
                 (player_params, self.tb, self.te, period, self.musicfn))
@@ -109,6 +110,7 @@ Usage:
     [-period <n>]
     [-merge <seconds>]     # unite segment if difference < seconds
     [-av]                  # Use avplay instead of mplayer
+    [-dry]                 # Just show what was meant to play
     [sbegin send] [seg]
 """
              % self.argv[0])
@@ -131,6 +133,7 @@ Usage:
         self.sleep_seconds = 3
         self.merge_seconds = None
         self.any_midi = False
+        self.dry = False
         self.av = False
         ai = 1
         while ai < len(sys.argv) and self.argv[ai][0] == '-':
@@ -162,6 +165,8 @@ Usage:
                 vlog(f"(parse args) merge_seconds={self.merge_seconds}")
             elif opt == "-av":
                 self.av = True
+            elif opt == "-dry":
+                self.dry = True
             else:
                 vlog("Bad option: %s" % opt)
                 self.usage()
@@ -233,9 +238,9 @@ Usage:
                 for si in range(nums[ab], nums[ae]):
                     self.play(si, sleep)
                     sleep = self.sleep_seconds
-            else:
-                pass
+            else: # merge
                 si = nums[ab]
+                vlog(f"nums={nums}")
                 while si < nums[ae]:
                     seg = self.segs[si].clone()
                     segi = si
@@ -246,8 +251,9 @@ Usage:
                         seg.set_te(self.segs[si + 1].get_te())
                         seg.comment += ' ' + self.segs[si + 1].comment
                         si += 1
-                        seg.play(segi, self.ticks_period, sleep)
-                        sleep = self.sleep_seconds
+                        vlog(f"[2] si={si}")
+                    seg.play(segi, self.ticks_period, sleep)
+                    sleep = self.sleep_seconds
                     si += 1
             ab += 2
             ae += 2
