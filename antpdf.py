@@ -83,6 +83,8 @@ Usage:
 
    Page-numbers start with 1. If preceded by '=' then (Dijkstra) start with 0.
    y coordinates grow up. If negative grow down.
+   if font contaings '/' (slash) then it is fontname/color,
+   where color is given as r,g,b,a
 """[1:] % self.argv[0])
 
     def error(self, msg):
@@ -197,8 +199,9 @@ Usage:
                     can.rect(a.x, a.y, a.w, a.h, stroke=0, fill=1)
                     merge_needed = True
                 if isinstance(a, Annotation) and ba_pass == 1:
-                    can.setFillColor(colors.black)
-                    can.setFont(a.v[E_FONT], int(a.size))
+                    (font_name, color) = self.get_font_color(a.v[E_FONT])
+                    can.setFillColor(color)
+                    can.setFont(font_name, int(a.size))
                     y = a.y
                     if y < 0:
                         y += height
@@ -211,6 +214,16 @@ Usage:
                 page.mergePage(ann_pdf.getPage(0))
         self.pdfout.addPage(page)
         
+    def get_font_color(self, font_name: str) -> (str, colors.Color):
+        color = colors.black
+        font_name_ss = font_name.split('/')
+        if len(font_name_ss) == 2:
+            color_ss = font_name_ss[1].split(',')
+            if len(color_ss) == 4:
+                font_name = font_name_ss[0]
+                factors = list(map(float, color_ss))
+                color = colors.Color(factors[0], factors[1], factors[2], factors[3])
+        return (font_name, color)
 
     def verbose(self, msg):
         sys.stderr.write("%s\n" % msg)
