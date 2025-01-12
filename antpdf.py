@@ -10,6 +10,15 @@ import io
 import PyPDF2
 import reportlab.pdfgen.canvas
 import reportlab.lib.colors as colors
+from reportlab.lib.fonts import addMapping
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
+
+font_path = "/usr/share/fonts/truetype/culmus/MiriamMonoCLM-Bold.ttf"
+pdfmetrics.registerFont(TTFont('MiriamMonoCLM', font_path))
+addMapping('MiriamMonoCLM', 0, 0, 'MiriamMonoCLM') 
+
 
 N_E = 6
 (E_PAGE, E_X, E_Y, E_FONT, E_SIZE, E_TEXT) = range(N_E)
