@@ -51,7 +51,20 @@ class SrtLin:
         n_lines = 0
         n_xforms = 0
         out = open(self.fn_out, "w")
-        for line in open(self.fn_in).readlines():
+        # for line in open(self.fn_in).readlines():
+        fin = open(self.fn_in)
+        line = "dum"
+        prev_line = ""
+        ln = 0
+        while line != "":
+            ln += 1
+            try:
+                line = fin.readline()
+            except Exception as e:
+                vlog(f"Failed to read line {ln} after {prev_line}. reason: {e}")
+                # sys.exit(1)
+                line = ""
+            prev_line = line
             ss = line.split()
             if len(ss) == 3 and ss[1] == "-->":
                 tb = self.xform(ss[0])

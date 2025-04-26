@@ -77,12 +77,20 @@ class Segment:
             else:
                 # run("mplayseg.py %s %s %s %s" % 
                 #     (self.musicfn, self.tb, self.te, player_params))
-                run(f'mpv --start={self.tb} --end={self.te} {player_params} {self.musicfn}')
-        elif self.seg:
+                run(f"mpv --start={self.tb} --end={self.te} {player_params} "
+                    f"{self.musicfn}", dry=self.p.dry)
+        elif self.musicfn.endswith(".mid") or self.musicfn.endswith(".midi"):
             player_params = self.p.midi_player_params
             pp_pad = " " if player_params == "" else (" %s " % player_params)
-            run("timiseg%s-idt --segment %s %s" % 
-                (pp_pad, self.seg, self.musicfn), dry=self.p.dry)
+            # run("timiseg%s-idt --segment %s %s" % 
+            #     (pp_pad, self.seg, self.musicfn), dry=self.p.dry)
+            if self.seg:
+                [tb, te] = self.seg.split('-')
+            else:
+                tb = self.tb
+                te = self.te
+            run(f"modimidi --progress {pp_pad} -b {tb} -e {te} {self.musicfn}",
+                dry=self.p.dry)
         else:
             run("timiticks %s --ticks %s:%s:%d %s" % 
                 (player_params, self.tb, self.te, period, self.musicfn))
