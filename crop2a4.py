@@ -17,7 +17,7 @@ def safe_unlink(fn: str):
         pass
 
 
-def ff_crop(fn_in, fn_out, page_num, crop_rect, margin=60):
+def ff_crop(fn_in, fn_out, page_num, crop_rect, margin):
     # Define crop rectangle and target A4 size in points
     a4_width, a4_height = tuple(pypdf.PaperSize.A4)
     media_width = a4_width - margin
@@ -81,11 +81,12 @@ def crop2a4(argv):
     parser.add_argument("yb", type=float, help="Y-Bottom")
     parser.add_argument("xr", type=float, help="X-Right")
     parser.add_argument("yt", type=float, help="Y-Top")
+    parser.add_argument("margin", type=float, help="margin")
     args = parser.parse_args(argv)
     ow(f"args={args}\n")
 
     rect = [args.xl, args.yb, args.xr, args.yt]
-    ff_crop(args.input, args.output, args.page, rect)
+    ff_crop(args.input, args.output, args.page, rect, args.margin)
     return rc
 
 
