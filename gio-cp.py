@@ -41,6 +41,7 @@ class GioCopy:
             self.mtp_to_dst(self.srcdir, self.dstdir)
         else:
             self.src_to_mtp(self.srcdir, self.dstdir)
+        vlog(f"{self.copy_count} copied, {self.skip_count} skipped")
 
     def mtp_to_dst(self, srcdir, dstdir):
         vlog(f"ensure/mkdir {dstdir}")
@@ -53,10 +54,10 @@ class GioCopy:
             fe = file_entries[fei]
             target = f"{dstdir}/{fe.basename}"
             if not self.force and self.same_size(target, fe.size):
-                vlog("Already exists {target}")
+                vlog(f"Already exists {target}")
                 self.skip_count += 1
             else:
-                cmd = f"{gio_copy} '{dstdir}/{fe.basename}' '{target}'"
+                cmd = f"{gio_copy} '{srcdir}/{fe.basename}' '{target}'"
                 vlog(cmd)
                 if not self.dry:
                     self.rc = os.system(cmd)
