@@ -3,8 +3,11 @@
 import argparse
 import os
 import pprint
+import stat
 import subprocess
 import sys
+
+GIO_COPY = "gio copy --progress --preserve"
 
 def vlog(msg):
     sys.stderr.write(msg + '\n')
@@ -18,7 +21,9 @@ class Entry:
         self.basename = basename
         self.size = size
     def __str__(self):
-        return "({self.basename}, {self.size})"
+        return f"({self.basename}, {self.size})"
+    def __eq__(self, other):
+        return (self.basename, self.size) == (other.basename, other.size)
 
 class GioCopy:
 
@@ -30,6 +35,9 @@ class GioCopy:
         self.dry = dry
         self.copy_count = 0
         self.skip_count = 0
+
+    def ok(self):
+        return self.rc == 0
 
     def run(self):
         src_is_mtp = self.srcdir.startswith("mtp://")
@@ -48,23 +56,22 @@ class GioCopy:
         if not self.dry:
             os.makedirs(dstdir, exist_ok=True)
         folders, file_entries = self.mtp_get_folder(srcdir)
-        gio_copy = "gio copy --progress --preserve"
         fei = 0
-        while self.rc == 0 and fei < len(file_entries):
+        while self.ok() and fei < len(file_entries):
             fe = file_entries[fei]
             target = f"{dstdir}/{fe.basename}"
             if not self.force and self.same_size(target, fe.size):
                 vlog(f"Already exists {target}")
                 self.skip_count += 1
             else:
-                cmd = f"{gio_copy} '{srcdir}/{fe.basename}' '{target}'"
+                cmd = f"{GIO_COPY} '{srcdir}/{fe.basename}' '{target}'"
                 vlog(cmd)
                 if not self.dry:
                     self.rc = os.system(cmd)
                 self.copy_count += 1
             fei += 1
         fei = 0
-        while self.rc == 0 and fei < len(folders):
+        while self.ok() and fei < len(folders):
             folder = folders[fei]
             self.mtp_to_dst(f"{srcdir}/{folder}", f"{dstdir}/{folder}")
             fei += 1
@@ -105,8 +112,56 @@ class GioCopy:
         return same
 
     def src_to_mtp(self, srcdir, dstdir):
-        fatal("src_to_mtp not yet implemented")
+        if not self.dry:
+            cmd = f"gio mkdir --parent '{dstdir}'"
+            vlog(cmd)
+            if self.ok() and not self.dry:
+                 rc_mkdir = os.system(cmd)
+                 vlog(f"rc_mkdir={rc_mkdir}")
+        folders, file_entries = self.get_folder(srcdir)
+        vlog(f"#(file_entries)={len(file_entries)} in ${srcdir}")
+        mtp_folders, mtp_file_entries = self.mtp_get_folder(dstdir)
+        fei = 0
+        while self.ok() and fei < len(file_entries):
+            fe = file_entries[fei]
+            target = f"{dstdir}/{fe.basename}"
+            if not self.force and self.mtp_same_size(mtp_file_entries, fe):
+                vlog(f"Already exists {target}")
+                self.skip_count += 1
+            else:
+                cmd = f"{GIO_COPY} {srcdir}/{fe.basename} '{target}'"
+                vlog(cmd)
+                if not self.dry:
+                    self.rc = os.system(cmd)
+            fei += 1
+        fei = 0
+        while self.ok() and fei < len(folders):
+            folder = folders[fei]
+            self.src_to_mtp(f"{srcdir}/{folder}", f"{dstdir}/{folder}")
+            fei += 1
 
+    def get_folder(self, dn):
+        entries = os.listdir(dn)
+        folders = []
+        file_entries = []
+        for e in entries:
+            srcdir_e = f"{dn}/{e}"
+            statbuf = os.stat(srcdir_e)
+            if stat.S_ISDIR(statbuf.st_mode):
+                folders.append(e)
+            elif stat.S_ISREG(statbuf.st_mode):
+                file_entries.append(Entry(e, statbuf.st_size));
+            else:
+                vlog(f"Ignoring {srcdir_e}")
+        folders = sorted(folders)
+        file_entries = sorted(file_entries, key=lambda entry: entry.basename)
+        return folders, file_entries
+
+
+    def mtp_same_size(self, mtp_file_entries, fe):
+        same = fe in mtp_file_entries # can be binary searched
+        # vlog(f"mtp_same_size: same={same}, fe={fe}")
+        return same
 
 def main(argv):
     parser = argparse.ArgumentParser(
@@ -133,6 +188,7 @@ def main(argv):
     p = GioCopy(parsed_args.srcdir, parsed_args.dstdir,
         parsed_args.force, parsed_args.dry)
     p.run()
+    vlog(f"p.rc={p.rc}")
     return p.rc
 
 if __name__ == "__main__":
