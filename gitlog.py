@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os
+import shutil
 import sys
 import subprocess
 import textwrap
@@ -20,7 +20,7 @@ class GitLog:
     defaults = {
         'n': 8,
         'hashlen': 8,
-        'trim': os.get_terminal_size().columns
+        'trim': shutil.get_terminal_size(fallback=(80, 24))[0]
     }
     def __init__(self, argv):
         defaults = self.__class__.defaults

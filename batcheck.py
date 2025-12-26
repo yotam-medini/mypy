@@ -31,15 +31,13 @@ class BatCheck:
         return self.rc == 0
 
     def run(self):
-        vlog("run...")
         line = open(f"{self.dev}/status").readline().strip()
-        vlog(f"status: {line}")
         if line != "Charging":
             line = open(f"{self.dev}/capacity").readline().strip()
-            vlog(f"capacity: {line}")
+            # vlog(f"capacity: {line}")
             capacity = int(line)
             if capacity < self.threshold:
-                vlog(f"capacity = {capacity} < {self.threshold} threshold")
+                # vlog(f"capacity = {capacity} < {self.threshold} threshold")
                 if self.low_command is not None:
                     os.system(self.low_command)
 
@@ -69,7 +67,7 @@ def main(argv):
     p = BatCheck(parsed_args.dev, parsed_args.threshold,
         parsed_args.low_command)
     p.run()
-    vlog(f"p.rc={p.rc}")
+    # vlog(f"p.rc={p.rc}")
     return p.rc
 
 if __name__ == "__main__":
