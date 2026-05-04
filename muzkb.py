@@ -156,7 +156,7 @@ class Locator:
             n_inoct = 9 - n_inoct
         n_whites = 7*octaves + n_inoct
         return n_whites
-        
+
     def pick(self, x, y):
         bnote = -1
         wnote = self.pick_from(self.white_keys, x)
@@ -299,7 +299,7 @@ class JustIntonation(Tuning):
             if qi == 12:
                 qi = 0
                 octave_fix *= 2
-            
+
         # elog('q=%s' % list(map(lambda x: '%g' % x, q)))
         # elog('factors=%s' % list(map(lambda x: '%g' % x, self.factors)))
         # elog('factors=%s' % str(self.factors))
@@ -309,7 +309,7 @@ class JustIntonation(Tuning):
     def middle_note_frequency(self, note):
         frequeny = self.factors[note] * self.frequeny_ref
         return frequeny
-    
+
 class Pythagorean(JustIntonation):
 
     def __init__(self, note_ref, frequeny_ref, tuning_base):
@@ -367,8 +367,8 @@ for b in WHITE_SEMI: # CBDEFGAB
     mult = 2. ** ((b - 9)/12.)
     TUNING_RANGES.append(
         tuple(map(lambda afreq: round(mult*afreq), [400, 471])))
-    
-            
+
+
 class MusicKeyboard:
 
     color_white = (0.93, 0.93, 0.66)
@@ -428,7 +428,7 @@ class MusicKeyboard:
             self.tuning = FiveLimit(note, frequency, self.tuning_base)
         else:
             fatal('Bad tuning_system=%s' % self.tuning_system)
-        
+
     def build_ui(self, window_size):
         self.window_size = window_size
         win = Gtk.Window(title="Music Keyboard")
@@ -442,7 +442,7 @@ class MusicKeyboard:
         keyboard = self.build_keyboard()
         vbox.pack_start(keyboard, True, True, 6)
         self.viewlog = self.build_view_log(window_size)
-        vbox.pack_start(self.viewlog, False, True, 6)        
+        vbox.pack_start(self.viewlog, False, True, 6)
         win.add(vbox)
         elog('viewlog size=%s' % str(self.viewlog.get_size_request()))
         win.show_all()
@@ -491,14 +491,14 @@ class MusicKeyboard:
         elog('val=%g' % val)
         scale.set_value(val)
         return scale
-    
+
     def framed_hscale(self, name, val, vmin, vmax, step_inc, page_inc):
         HORIZONTAL = Gtk.Orientation.HORIZONTAL
         frame = self.label_frame(name)
         scale = self.hscale(val, vmin, vmax, step_inc, page_inc)
         frame.add(scale)
         return frame, scale
-    
+
     def change_pitch_note(self, combo):
         text = combo.get_active_text()
         self.pitch_note = 'CxDxEFxGxAxB'.find(text)
@@ -513,7 +513,7 @@ class MusicKeyboard:
         self.frequeny_scale.set_adjustment(adj)
         self.frequeny_scale.set_value(self.pitch_frequency)
         self.set_tuning()
-        
+
     def change_pitch_frequency(self, w):
         self.pitch_frequency = w.get_value()
         elog('pitch_frequency=%g' % self.pitch_frequency)
@@ -543,14 +543,14 @@ class MusicKeyboard:
         elog('change_tuning_system: text=%s, tuning_base=%d' %
              (text, self.tuning_base))
         self.set_tuning()
-        
+
     def frame_tuning(self):
         frame = self.label_frame('Tuning')
         hbox = Gtk.HBox()
         combo_pitch_note = Gtk.ComboBoxText()
         for i in range(7):
             combo_pitch_note.append_text('CDEFGAB'[i])
-            
+
         wi = SEMI_WHITE[self.pitch_note]
         combo_pitch_note.set_active(wi)
         hbox.pack_start(combo_pitch_note, False, False, 1)
@@ -587,7 +587,7 @@ class MusicKeyboard:
 
         frame.add(hbox)
         return frame
-        
+
     def volume_change(self, widget):
         elog('volume_change: value=%g' % widget.get_value())
         self.volume = widget.get_value()
@@ -611,7 +611,7 @@ class MusicKeyboard:
         hbox.pack_start(hbox_vd, False, True, 6)
         hbox.pack_start(self.frame_tuning(), False, True, 6)
         frame.add(hbox)
-        
+
         return frame
 
     def build_keyboard(self):
@@ -619,8 +619,8 @@ class MusicKeyboard:
         da.connect('draw', self.draw_keyboard, 17)
         elog('da.connect button event')
         da.set_events(da.get_events()
-              | Gdk.EventMask.BUTTON_PRESS_MASK   
-              | Gdk.EventMask.BUTTON_RELEASE_MASK 
+              | Gdk.EventMask.BUTTON_PRESS_MASK
+              | Gdk.EventMask.BUTTON_RELEASE_MASK
               # | Gdk.EventMask.POINTER_MOTION_MASK
         )
         # da.connect('button_press_event', self.keyboard_press)
@@ -693,7 +693,7 @@ class MusicKeyboard:
             lines = lines[1:] + [line]
             text = '\n'.join(lines)
             buffer.set_text(text)
-        
+
     def play_note(self, note):
         elog('play_note: note=%d' % note)
         f = self.tuning.note_frequency(note)
@@ -723,7 +723,7 @@ class App:
             -h | --help                            # This message
             -geo <width>x<height>                  # [%dx%d]
             -range <low-high>                      # [%s-%s]
-            -pitch <note=frequency>                # [a=440]    
+            -pitch <note=frequency>                # [a=440]
             -tuning <equal|pyth|just>[,<basenote>] # [equal]
             -vol <volume>                          # [%g] 0.1 <= volume <= 1.0
             -t <duration seconds>                  # [%g] 0.1 <= seconds <= 1.0
@@ -739,7 +739,7 @@ class App:
             Defaults.duration
             )))
         self.helped = True
-        
+
     def __init__(self, argv):
         elog('App.__init__')
         self.rc = 0
@@ -802,9 +802,8 @@ class App:
 
     def may_run(self):
         return self.rc == 0 and not self.helped
-                                         
-                                        
-        
+
+
 if __name__ == '__main__':
     rc = 0
     elog('Hello')
