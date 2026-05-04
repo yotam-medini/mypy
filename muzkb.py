@@ -10,7 +10,7 @@ import textwrap
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
-from gi.repository import Gdk
+from gi.repository import Gdk, GdkPixbuf
 import cairo
 
 
@@ -432,6 +432,7 @@ class MusicKeyboard:
     def build_ui(self, window_size):
         self.window_size = window_size
         win = Gtk.Window(title="Music Keyboard")
+        self.set_icon(win)
         win.connect("destroy", self.quit, "via window destroy")
         win.set_default_size(window_size[0], window_size[1])
         vbox = Gtk.VBox()
@@ -447,6 +448,14 @@ class MusicKeyboard:
         elog('viewlog size=%s' % str(self.viewlog.get_size_request()))
         win.show_all()
         elog('after show viewlog size=%s' % str(self.viewlog.get_size_request()))
+
+    def set_icon(self, win):
+        dn = os.path.dirname(sys.argv[0])
+        png_filename = f"{dn}/muzkb_icon16.png"
+        sys.stderr.write(f"png_filename={png_filename}\n")
+        if os.path.exists(png_filename):
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(png_filename)
+            win.set_icon(pixbuf)
 
     def build_menubar(self):
         mb = Gtk.MenuBar()
