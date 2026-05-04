@@ -14,11 +14,21 @@ from reportlab.lib.fonts import addMapping
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase.ttfonts import TTFont
+from bidi.algorithm import get_display
 
 font_path = "/usr/share/fonts/truetype/culmus/MiriamMonoCLM-Bold.ttf"
 pdfmetrics.registerFont(TTFont('MiriamMonoCLM', font_path))
 addMapping('MiriamMonoCLM', 0, 0, 'MiriamMonoCLM') 
 
+font_path = "/usr/share/fonts/truetype/culmus/MiriamCLM-Book.ttf"
+pdfmetrics.registerFont(TTFont('MiriamCLM', font_path))
+addMapping('MiriamCLM', 0, 0, 'MiriamCLM') 
+
+# font_path = "/usr/share/fonts/truetype/culmus/DavidCLM-Medium.otf"
+font_path = "/home/yotam/fonts.d/otf-ttf/DavidCLM-Medium.ttf"
+pdfmetrics.registerFont(TTFont('DavidCLM', font_path))
+# addMapping('DavidCLM', 0, 0, 'DavidCLM') 
 
 N_E = 6
 (E_PAGE, E_X, E_Y, E_FONT, E_SIZE, E_TEXT) = range(N_E)
@@ -214,7 +224,8 @@ Usage:
                     y = a.y
                     if y < 0:
                         y += height
-                    can.drawString(a.x, y, a.v[E_TEXT])
+                    s = get_display(a.v[E_TEXT])
+                    can.drawString(a.x, y, s)
                     merge_needed = True
             if merge_needed:
                 can.save()
